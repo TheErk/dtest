@@ -1,0 +1,14 @@
+recursive-include dtest *.py
+recursive-include docs *
+recursive-include tests *
+include README.txt
+include AUTHORS
+include LICENSE
+include LICENSE.header
+include TODO
+include *.py
+include MANIFEST.in
+recursive-include TAP *
+recursive-include external *
+global-exclude *~
+global-exclude *.pyc

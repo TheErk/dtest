@@ -1,0 +1,15 @@
+- prune timeout handling for barrier
+
+- handle ok/nok more automatically for every
+  DTester operation method
+
+- write more documentation parsable by epydoc
+
+- handle X11 forwarding in order to be able to drive X11 application
+
+- work for pexpect/paramiko integration in order to use pexpect
+  both for local and ssh pty
+
+- design and create a default and simple test files sets
+  which may be handled by each DTesters
+

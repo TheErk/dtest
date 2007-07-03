@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+import dtest
+import logging
+import os
+import time
+import threading
+import getopt, sys
+
+def usage():
+    print "Usage:\n %s [-h|--help] [-s|--ssh_cmd=<user>@[<host>]:<cmd>]" % sys.argv[0]
+    
+def getUserHostPath(argument):
+    if argument.find("@") != -1:
+        (user,argument) = argument.split("@",1)
+    else:
+        user = os.environ["USER"]
+    if argument.find(":") != -1:
+        (host,cmd) = argument.split(":",1)
+    else:
+        host = "localhost"
+        cmd = argument
+    retval = dict()
+    retval['user'] = user
+    retval['host'] = host
+    retval['cmd'] = cmd
+    return retval
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "hs:", ["help","ssh_cmd="])
+except getopt.GetoptError, err:
+    print >> stderr, "opt = %s, msg = %s" % (err.opt,err.msg)
+    usage()
+    sys.exit(2)
+
+if len(opts) < 1:
+    # default command is 'ls'
+    param=getUserHostPath("ls")
+
+for o, a in opts:
+    if o in ("-s", "--ssh_cmd"):
+        param   = getUserHostPath(a)
+    if o in ("-h", "--help"):
+        usage()
+
+dtester_ssh = dtest.DTester("dtester-ssh",
+                            session=dtest.SSHSessionHandler(param['user'],
+                                                            host=param['host']))
+
+dtester_ssh2 = dtest.DTester("dtester-ssh2",
+                            session=dtest.SSHSessionHandler(param['user'],
+                                                            host=param['host']))
+
+
+# you may change the default time out value
+dtester_ssh2.timeout = 30
+dtester_ssh.timeout  = 15
+# set up file
+dtester_ssh.stdout = file(dtester_ssh.name + ".out",'w+')
+dtester_ssh.stdin  = file(dtester_ssh.name + ".in",'w+')
+dtester_ssh.stderr = file(dtester_ssh.name + ".err",'w+')
+dtester_ssh2.stdout = file(dtester_ssh.name + ".out",'w+')
+dtester_ssh2.stdin  = file(dtester_ssh.name + ".in",'w+')
+dtester_ssh2.stderr = file(dtester_ssh.name + ".err",'w+')
+
+def createLocalFile(dtester, filename, content):
+    f = file(filename,'w+')
+    f.write(content)
+    f.close()
+    dtester.ok(True,"createdLocalFile <%s> " % filename)
+
+def compareFiles(dtester, file1, file2):
+    import filecmp
+    dtester.ok(filecmp.cmp(file1,file2),"Compare <%s> with <%s>" %(localfile1,localfile2))
+    
+dtest.DTester.logger.setLevel(level=logging.WARNING)
+
+dtester_ssh.addRunStep("ok",True,"dtester ssh starts")
+dtester_ssh.addRunStep("runCommand",command=param['cmd']+"\n")
+dtester_ssh.addRunStep("expectFromCommand",param['cmd'])
+dtester_ssh.addRunStep("terminateCommand")
+dtester_ssh.addRunStep("waitCommandTermination")
+dtester_ssh.addRunStep("ok",True,"dtester ssh ends")
+
+dtester_ssh2.addRunStep("ok",True,"dtester2 ssh starts")
+localfile1="dtest-sshtest-local.txt.orig"
+remotefile1="/tmp/"+localfile1+".putted"
+remotefile2=remotefile1+".renamed"
+localfile2=localfile1+".getted"
+
+dtester_ssh2.addRunStep(createLocalFile,localfile1,"This file has been written locally")
+dtester_ssh2.nb_steps += 1
+dtester_ssh2.addRunStep("putFile",localfile1,remotefile1)
+dtester_ssh2.addRunStep("ok",True,"file <%s> transfered to <%s> " % (localfile1,remotefile1))
+dtester_ssh2.addRunStep("runCommand",command="mv %s %s" % (remotefile1,remotefile2) )
+dtester_ssh2.addRunStep("ok",True,"file <%s> renamed to <%s> " % (remotefile1,remotefile2))
+dtester_ssh2.addRunStep("waitCommandTermination")
+dtester_ssh2.addRunStep("getFile",remotefile1,localfile2)
+dtester_ssh2.addRunStep("ok",True,"file <%s> transfered from <%s> " % (localfile2,remotefile2))
+dtester_ssh2.addRunStep(compareFiles,localfile1,localfile2)
+dtester_ssh2.nb_steps += 1
+
+# Here begins the test
+dtest.DTestMaster.logger.setLevel(level=logging.WARNING)
+dtest.DTester.logger.setLevel(level=logging.WARNING)
+dtest.SSHSessionHandler.logger.setLevel(level=logging.WARNING)
+
+def goTest():
+    myDTestMaster = dtest.DTestMaster()
+    myDTestMaster.timeout = 40
+    myDTestMaster.register(dtester_ssh)
+    myDTestMaster.register(dtester_ssh2)
+    myDTestMaster.startTestSequence()
+    myDTestMaster.waitTestSequenceEnd()
+    
+goTest()
+

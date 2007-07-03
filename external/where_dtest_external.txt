@@ -1,0 +1,10 @@
+Some external packages are necessary for dtest usage:
+
+	- Paramiko which is a pure python SSH implementation
+		http://www.lag.net/paramiko
+                (paramiko requires PyCrypto http://www.amk.ca/python/code/crypto.html)
+	- PyTAP which a Python Module which implements Test Anything Protocol
+		http://svn.codesimply.com/projects/pytap
+  		http://en.wikipedia.org/wiki/Test_Anything_Protocol
+	- Pexpect (not used yet)
+		http://pexpect.sourceforge.net

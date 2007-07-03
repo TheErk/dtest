@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+##-----------------------------------------------------------------------
+##
+## DTest - A Distributed test framework
+##
+## Copyright (c) 2006,2007 Eric NOULARD and Frederik DEWEERDT 
+##
+## This library is free software; you can redistribute it and/or
+## modify it under the terms of the GNU Lesser General Public
+## License as published by the Free Software Foundation; either
+## version 2.1 of the License, or (at your option) any later version.
+##
+## This library is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+## Lesser General Public License for more details.
+##
+## You should have received a copy of the GNU Lesser General Public
+## License along with this library; if not, write to the Free Software
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+##
+##-----------------------------------------------------------------------
+
+
+import dtest
+import time
+import logging
+
+# Here begins the test
+dtest.DTestMaster.logger.setLevel(level=logging.ERROR)
+dtest.DTester.logger.setLevel(level=logging.ERROR)
+
+def myCustomStep(dtester, *args, **kwargs):
+   dtester.ok(True,"myCustomStep")
+
+def myInvalidCustomStep(bla, blo):
+   print "myInvalidCustomStep"
+
+def mySleepStep(dtester):
+   time.sleep(6)
+
+# Create as many DTester as you need
+tester1     = dtest.DTester("DTester1")
+tester2     = dtest.DTester("DTester2")
+
+# Describe the run step(s)
+tester1.addRunStep("barrier","aBarrier")
+tester2.addRunStep("barrier","aBarrier")
+tester2.addRunStep("ok",True,skip="--SKIPPED step--")
+tester2.addRunStep("ok",False,desc="here is a failure")
+# You may add a run step using different syntax
+# 1- use a string as method name
+# 2- use an unbound method from a class
+# 3- use a bound method
+
+# 1- use a string as method name
+#    then DTest will lookup a method "ok" in class
+#    corresponding to object instance
+#    calling addRunStep (i.e. tester2.__class__ in this case)
+tester2.addRunStep("ok",True,desc="ok step using 'string' ok name")
+# 2- use an unbound method from a class
+#    then DTest will use the method and provides "self" as first arg
+tester2.addRunStep(dtest.DTester.ok,True,desc="ok step using 'DTester.ok' unbound method")
+# 2bis- use an unbound method taken from the class
+#       using the __class__ attribute of the object
+tester2.addRunStep(tester2.__class__.ok,True,desc="ok step using 'tester2.__class__.ok' unbound method")
+# 3- use a bound method
+#
+tester2.addRunStep(tester2.ok,True,desc="ok step using 'tester2.ok' bound method")
+# 5- use a custom step
+#    then DTest wil check that first arg is either self or dtester
+#    and will provider the "self" caller as firstb arg
+tester1.addRunStep(myCustomStep)
+tester1.nb_steps += 1
+try:
+   tester1.addRunStep(myInvalidCustomStep)
+except dtest.DTester.InvalidStepFunctionException, e:
+   print "## OK not adding the run step:", repr(myInvalidCustomStep)
+   print "## Since it raises : ", repr(e)   
+
+tester2.addRunStep("barrier","anotherBarrier")
+tester2.addRunStep("ok",True,todo="--TODO step--")
+
+# Thoses step will make tester2 timeout for sure
+tester1.addRunStep("barrier","wait4me4ever")
+tester2.addRunStep("barrier","wait4me4ever")
+tester1.addRunStep("waitDuring",6)
+tester1.addRunStep("barrier","timedBarrier",10.6)
+tester2.addRunStep("barrier","timedBarrier",1.5)
+tester2.addRunStep("ok",True,desc="--END step--")
+
+myDTestMaster = dtest.DTestMaster()
+myDTestMaster.register(tester1)
+myDTestMaster.register(tester2)
+myDTestMaster.startTestSequence()
+myDTestMaster.waitTestSequenceEnd()
