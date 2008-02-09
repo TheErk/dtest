@@ -81,7 +81,7 @@ class SSHSessionHandler(dtest.SessionHandler):
         if buffer==None:
             retval = True
             buffer = StringIO("")
-        while (read!=size):
+        while (read!=size) and not self.hasTimedOut:
             if self.SSHShell.recv_ready():
                 buffer.write(self.SSHShell.recv(1))
                 read += 1

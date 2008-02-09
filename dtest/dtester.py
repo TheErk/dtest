@@ -94,6 +94,15 @@ class SessionHandler (object):
         self.stdin   = None
         self.stderr  = None
         self.stdout  = None
+        self.__hasTimedOut = False
+
+    def __getHasTimedOut(self):
+	return self.__hasTimedOut
+
+    def __setHasTimedOut(self,value):
+	 self.__hasTimedOut = value
+
+    hasTimedOut = property(fget=__getHasTimedOut,fset=__setHasTimedOut)
 
     def __getLastReceive(self):
         return self.__LastReceive
@@ -328,7 +337,15 @@ class DTester (Thread):
 
     def __expectTimedOut(self,msg=None):
         self.logger.warning("Expect timeout: %s" % msg)
+        if self.stdin != None:
+            self.stdin.flush()
+        if self.stdout != None:
+            self.stdout.flush()
+        if self.stderr != None:
+            self.stderr.flush()
         self.__expectDidTimeOut = True
+        # notify session 
+        self.session.hasTimedOut = True
 
     def __createExpectTimer(self,timeout=10,msg=""):
         self.__expectDidTimeOut = False
@@ -357,6 +374,8 @@ class DTester (Thread):
         while (not pat.search(monitored.getvalue())) and (not self.__expectDidTimeOut):
             self.session.recv(1,monitored)
 
+        # We will get there because time out handler did tell
+        # the session handler the test has timedout
         if self.__expectDidTimeOut:
             self.logger.warn("Monitored = %s" % monitored.getvalue())
             return False
