@@ -69,8 +69,8 @@ tester2.addRunStep(tester2.__class__.ok,True,desc="ok step using 'tester2.__clas
 #
 tester2.addRunStep(tester2.ok,True,desc="ok step using 'tester2.ok' bound method")
 # 5- use a custom step
-#    then DTest wil check that first arg is either self or dtester
-#    and will provider the "self" caller as firstb arg
+#    then DTest will check that first arg is either self or dtester
+#    and will provider the "self" caller as first arg
 tester1.addRunStep(myCustomStep)
 tester1.nb_steps += 1
 try:

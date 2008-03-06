@@ -102,6 +102,8 @@ class DTestMaster(Thread):
 
     def __globalTimeOutTriggered(self):
         self.logger.fatal("Global Time out triggered, exiting")
+        for dtester in self.dtesters:
+            dtester.abort()
         os._exit(1)
         #sys.exit(1)
         
