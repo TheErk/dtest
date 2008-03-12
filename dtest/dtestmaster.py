@@ -2,7 +2,7 @@
 ##
 ## DTest - A Distributed test framework
 ##
-## Copyright (c) 2006,2007 Eric NOULARD and Frederik DEWEERDT 
+## Copyright (c) 2006-2008 Eric NOULARD, Lionel DUROYON and Frederik DEWEERDT 
 ##
 ## This library is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,8 @@ import os
 import time
 import signal
 import logging
+#for execution trace
+from Queue import Queue
 
 try:
     set
@@ -67,8 +69,54 @@ class DTestMaster(Thread):
         self.runningDTesters = 0
         self.nb_steps  = 0
         self.timeout   = None
+        #for execution trace
+        #activate pseudoexecution mode
+        self.pseudoexec=0
+        #activate tracing mode
+        self.trace=0
+        #a queue for globally ordering execution steps
+        self.global_execution_steps_queue = Queue(0)
+
+    def setTrace(self,val):
+        self.trace=val
+            
+    def setPseudoExec(self,val):
+        self.pseudoexec=val
+            
+    def getTrace(self):
+        return self.trace
+           
+    def getPseudoExec(self):
+        return self.pseudoexec
+        
+    def traceStep(self,source,destination,step):
+        """Add an execution trace step to the execution steps queue to order them all"""
+        self.global_execution_steps_queue.put((source,destination,step))
+
+    def mscGenerator(self):
+        """We generate message sequence chart diagram from the execution steps enqueued"""
+        #for the online msc generator http://websequencediagrams.com/ , it places DTestmaster always on the left of the diagram
+        print "entity "+self.getName()
+        #we represent each step for msc diagram generation, we represent fully only "ok" and "barrier" steps
+        while not self.global_execution_steps_queue.empty():
+            line=self.global_execution_steps_queue.get()
+            src=line[0]
+            dest=line[1]
+            step=line[2]
+            methodName=step[0].__name__
+            firstArg=str(step[1])
+            firstArg = str.replace(firstArg,",","")
+            secondArg=""
+            #secondArg=str(step[2])
+            #secondArg=str.replace(secondArg,"{","")
+            #secondArg=str.replace(secondArg,"}","")
+            #for the online msc generator http://websequencediagrams.com/ 
+            mscline=src+"->"+dest+":"+methodName+firstArg+secondArg
+            #mscline=src+"=>"+dest+ "[label=\""+methodName+firstArg+secondArg+"\"]"
+            print mscline
         
     def register(self, dtester):
+        """Register the DTester dtester to this DTesMaster"""
         self.logger.info("Registering <" + dtester.getName() + ">...")
         # Add DTester to the set of DTester
         self.dtesters.add(dtester)
@@ -80,6 +128,7 @@ class DTestMaster(Thread):
         self.logger.info("<" + dtester.getName() + "> has registered.")
 
     def registerForBarrier(self, dtester, barrierId):
+        """Add the DTester dtester for participating to the barrier barrierID"""
         self.logger.info("Barrier <"+ barrierId+ "> registered for DTester <"+ dtester.getName()+ ">")
         # automagically create barrier 'barrierId'
         if not self.barriers.has_key(barrierId):
@@ -95,8 +144,7 @@ class DTestMaster(Thread):
             self.barriers[barrierId]['reached'].add(dtester)
                
     def ok(self, dtester, *args, **kwargs):
-        """ok TAP method
-        """
+        """ok TAP method"""
         self.__builder.ok(*args,**kwargs)
         return 0
 
@@ -108,12 +156,13 @@ class DTestMaster(Thread):
         #sys.exit(1)
         
     def barrier(self, dtester, barrierId, timeout):
-        """barrier DTest method.        
-        """
+        """barrier DTest method"""
         # check whether the barrier has been registered
+        #for execution trace 
+        if ( self.trace ):
+            self.traceStep(dtester.getName(),self.getName(),(self.barrier,"('"+barrierId+"')",""))
         if not self.barriers.has_key(barrierId):
             raise UnknownBarrierException, "barrier ID ="+barrierId
-        #
         try:
             self.barriers[barrierId]['reached'].remove(dtester)
         except KeyError:
@@ -140,13 +189,12 @@ class DTestMaster(Thread):
                 self.logger.info("DTester < "+ dtester.getName()+ "> crossed barrier <" + barrierId + ">.") 
 
     def run(self):
-
+        """Run thread method"""
         self.startTime = time.clock()
         # set up global time out
         if self.timeout != None:
             t = threading.Timer(self.timeout,self.__globalTimeOutTriggered)
             t.start()
-            
         # Initialize all registered dtesters
         for dtester in self.dtesters:
             self.logger.info("Initializing <"+ dtester.getName()+ ">...")
@@ -156,23 +204,17 @@ class DTestMaster(Thread):
                 self.logger.error("%s : %s" % (err.__class__,err))
                 t.cancel()
                 return
-                
             self.nb_steps += dtester.nb_steps
-
         self.logger.debug("Defined %d barriers" % len(self.barriers))
         self.nb_steps += len(self.barriers)
-
         # plan test 
         self.__builder.set_plan(self.nb_steps, None)
-        
         # Start all registered dtesters
         for dtester in self.dtesters:
             self.logger.info("Starting <"+ dtester.getName()+ ">...")
             dtester.start()
             self.runningDTesters += 1
-
         self.logger.info("Now <%d> registered DTesters launched.",self.runningDTesters)
-
         # Wait for DTesters to terminate
         self.joinedDTesters = set()
         while self.runningDTesters > 0:
@@ -187,16 +229,17 @@ class DTestMaster(Thread):
             # use the powerful difference_update on set
             # to continue looping on remaining (not already joined dtesters)
             self.dtesters.difference_update(self.joinedDTesters)
-
         if self.timeout !=None:
             t.cancel()
-
-        endTime = time.clock()        
+        endTime = time.clock()   
 
     def startTestSequence(self):
+        """Start the test sequence"""
         self.start()
 
     def waitTestSequenceEnd(self):
+        """Wait for the test sequence ending"""
         self.join()
-    
-    
+        #execution trace 
+        if (self.trace):
+            self.mscGenerator()

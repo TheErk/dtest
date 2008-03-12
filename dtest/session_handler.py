@@ -2,7 +2,7 @@
 ##
 ## DTest - A Distributed test framework
 ##
-## Copyright (c) 2006,2007 Eric NOULARD and Frederik DEWEERDT 
+## Copyright (c) 2006-2008 Eric NOULARD, Lionel DUROYON and Frederik DEWEERDT 
 ##
 ## This library is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU Lesser General Public
@@ -92,7 +92,6 @@ class SessionHandler (object):
 
     def __setHasTimedOut(self,value):
 	 self.__hasTimedOut = value
-
     hasTimedOut = property(fget=__getHasTimedOut,fset=__setHasTimedOut)
 
     def __getLastReceive(self):
@@ -112,7 +111,6 @@ class SessionHandler (object):
         self.__lastSent = string
         # FIXME should add logger
         #print "LastSent = %s" % string
-
     lastSent = property(fget=__getLastSent,fset=__setLastSent)
 
     def __isnotoverloaded(self,method):
@@ -165,15 +163,18 @@ class SessionHandler (object):
             raise self.UnableToRunCommandException("Cannot recv_ready")
 
     def recv(self, size, buffer=None):
+        """Receive a string from the session"""
         if (not self.stdout==None):
             self.stdout.write(self.__lastReceive)
         if (self.__isnotoverloaded(SessionHandler.recv)):
             raise self.UnableToRunCommandException("Cannot recv")
 
     def putFile(self, sourcePath, destinationPath):
+        """ Put a file from sourcePath to destinationPath """
         if (self.__isnotoverloaded(SessionHandler.putFile)):
             raise self.UnableToFileTransferException("Cannot putFile")
 
     def getFile(self, sourcePath, destinationPath):
+        """ Get a file from sourcePath to destinationPath """
         if (self.__isnotoverloaded(SessionHandler.getFile)):
             raise self.UnableToFileTransferException("Cannot getFile")

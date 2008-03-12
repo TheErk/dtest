@@ -90,7 +90,18 @@ tester1.addRunStep("barrier","timedBarrier",10.6)
 tester2.addRunStep("barrier","timedBarrier",1.5)
 tester2.addRunStep("ok",True,desc="--END step--")
 
+# To generate a message sequence chart trace of the execution set trace to 1
+trace=1 
+
+# To generate a message sequence chart trace of one possible execution but without executing the steps
+# set pseudoexec to 1
+pseudoexec=1
+
 myDTestMaster = dtest.DTestMaster()
+if (trace):
+    myDTestMaster.setTrace(1)
+if (pseudoexec):
+    myDTestMaster.setPseudoExec(1)
 myDTestMaster.register(tester1)
 myDTestMaster.register(tester2)
 myDTestMaster.startTestSequence()

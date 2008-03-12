@@ -2,7 +2,7 @@
 ##
 ## DTest - A Distributed test framework
 ##
-## Copyright (c) 2006,2007 Eric NOULARD and Frederik DEWEERDT 
+## Copyright (c) 2006-2008 Eric NOULARD, Lionel DUROYON and Frederik DEWEERDT 
 ##
 ## This library is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU Lesser General Public

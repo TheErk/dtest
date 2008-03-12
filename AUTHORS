@@ -2,5 +2,6 @@ Original Authors
 ----------------
 Frederik DEWEERDT 	: first dtest draft using XMLRCP and PyTAP
 Eric NOULARD (Erk) 	: second dtest draft using paramiko and expect-like idea
+Lionel DUROYON : 
 Maintainers : eric.noulard@gmail.com
 

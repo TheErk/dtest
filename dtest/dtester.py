@@ -2,7 +2,7 @@
 ##
 ## DTest - A Distributed test framework
 ##
-## Copyright (c) 2006-2008 Eric NOULARD and Frederik DEWEERDT 
+## Copyright (c) 2006-2008 Eric NOULARD, Lionel DUROYON and Frederik DEWEERDT 
 ##
 ## This library is free software; you can redistribute it and/or
 ## modify it under the terms of the GNU Lesser General Public
@@ -37,7 +37,7 @@ import session_handler
 from session_handler import SessionHandler
 
 class DTester (Thread):
-    """Represents an elementary DTest stakeholder.
+    """Represent an elementary DTest stakeholder.
     
     DTest falls into (eventually) communicating and concurrent
     processes, the DTesters, which will be runned concurrently
@@ -45,7 +45,7 @@ class DTester (Thread):
     sequential steps (either initialize or run steps) specified
     through addInitializeStep and/or addRunStep
     DTester method.
-    FIXME: describe DTESTMASTER 
+    FIXME: describe DTESTMASTER
     """
  
     class InvalidStepFunctionException(Exception):
@@ -87,7 +87,7 @@ class DTester (Thread):
     logger.addHandler(sh)
        
     def __init__(self,name,session=SessionHandler(),timeout=10):
-        """ Create a DTester using the specified session handler.
+        """Creates a DTester using the specified Sessionhandler.
 
         @param name: the name of the DTester
         @type name: C{string}
@@ -108,7 +108,6 @@ class DTester (Thread):
         self.__expectDidTimeOut   = False
         self.__runSteps           = []
         self.__initializeSteps    = []
-
 
     def __getName(self):
         return self.getName()
@@ -136,11 +135,14 @@ class DTester (Thread):
     
     def __setStdout(self,file):
         self.session.stdout = file
+        
+    def getRunSteps(self):
+        return self.__runSteps
 
     stdout = property(fget=__getStdout,fset=__setStdout)
 
     def registerForBarrier(self, barrierId):
-        """register for DTest barrier barrierId in the DTestMaster.
+        """Register for DTest barrier barrierId in the DTestMaster.
 
         This method does not need to be called explicitly.
         The DTester will generate the call as soon as a 'barrier'
@@ -151,7 +153,7 @@ class DTester (Thread):
         self.dtestmaster.registerForBarrier(self,barrierId)
         
     def barrier(self, barrierId, timeout=None):
-        """wait until every stakeholder have reached the specified barrier.
+        """Wait until every stakeholder have reached the specified barrier.
 
         If timeout is not specified the DTester instance-wide timeout
         is used. If specified then the specified timeout is used.
@@ -167,9 +169,7 @@ class DTester (Thread):
         self.dtestmaster.barrier(self,barrierId,timeout)
 
     def ok(self, *args, **kwargs):
-        """ok TAP method.
-        
-        """
+        """Ok TAP (Test Anything Protocol) method"""
         self.dtestmaster.ok(self, *args, **kwargs)
 
     ## The following are command related API
@@ -177,6 +177,7 @@ class DTester (Thread):
     ## session handler API
     
     def runCommand(self, command=None, environ=None):
+        """Run a command on the session handler DTest.session"""
         self.session.openIfNotOpened()
         if (environ != None):
             self.session.updateEnviron(environ)
@@ -204,7 +205,8 @@ class DTester (Thread):
         t.setName("Timer-"+self.getName())
         return t
     
-    def expectFromCommand(self, pattern, timeout=None):        
+    def expectFromCommand(self, pattern, timeout=None):    
+        """Wait until the expected pattern is received on the session handler DTester.session"""
         pat       = re.compile(pattern)
         monitored = StringIO("")
 
@@ -236,10 +238,12 @@ class DTester (Thread):
             return True
     
     def sendToCommand(self, string):
+        """Send directly a string on the session handler DTester.session"""
         self.session.sendall(string)
         return True
     
     def waitCommandTermination(self, timeout=None):
+        """Wait until the session handler DTester.session ends"""
         if self.session.sessionOpened:
             while self.session.recv_ready():
                 self.session.recv(1)
@@ -249,6 +253,7 @@ class DTester (Thread):
         time.sleep(duration)
     
     def terminateCommand(self):
+        """Send to the session handler DTester.session the command for terminating"""
         self.session.sendall(self.session.CTRL_C)
         self.session.sendall(self.session.NEWLINE)
         return True
@@ -267,7 +272,27 @@ class DTester (Thread):
         self.__initializeSteps.append((stepmethod,args,kwargs))
 
     def addRunStep(self, stepmethod, *args, **kwargs):
-
+        """Add stepmethod run step to a DTester
+        
+        @param stepmethod: the stepmethod name
+        @type stepmethod: C{string}     
+        
+        Stepmethod parameter can be :
+            
+        ok : Test Anything Protocol display method.
+        runCommand : runs a command on the associed session handler.
+        expectFromCommand : waits for the reception of a string pattern on the associated session handler. 
+        terminateCommand : terminates a command on the associated session handler.
+        barrier : indicates that a DTester has reached a barrier.
+        sendToCommand : sends a command on the associated session handler.
+        waitCommandTermination : waits the command termination on the associated session handler.
+        custom : allows to run any python "callable".
+        
+        Each stepmethod matches an implemented method of DTester, except custom which allows you
+        to define and call your own python "callable"
+        to see which args parameters must follow each stepmethod, you can look the matching method
+        """
+        
         # Handle string stepmethod case
         if isinstance(stepmethod,type("")):
             if hasattr(self,stepmethod):
@@ -320,25 +345,51 @@ class DTester (Thread):
         self.logger.info("DTester <%s> initialize complete." % self.getName())
         
     def run(self):
+        """Run the DTester thread
+        
+        This method executes each run step defined previously by addRunStep
+        """
+        
         self.logger.info("DTester <%s> begin run..." % self.getName())
         for step in self.__runSteps:
             self.logger.debug("run :: step[0]: %s", str(step[0]))
             self.logger.debug("run :: step[1:] %s", str(step[1:]))
+            isBarrierStep=(step[0].__name__==self.barrier.__name__)
             if (len(step[1]) > 0) or (len(step[2]) > 0):
                 try:
                     if (DTester.__isbound(step[0])):
-                        step[0](*(step[1]),**(step[2]))
+                        #for execution trace
+                        if (self.dtestmaster.getTrace()):
+                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                        #for pseudo-execution
+                        if ((not self.dtestmaster.getPseudoExec())or isBarrierStep):
+                            step[0](*(step[1]),**(step[2]))
                     else:
-                        step[0](self,*(step[1]),**(step[2]))
+                        #for execution trace
+                        if (self.dtestmaster.getTrace()):
+                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                        #for pseudo-execution
+                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                            step[0](self,*(step[1]),**(step[2]))
                 except NotImplementedError, err:
                     self.logger.error("RunStep <%r> failed <%r>" % (step[0],err))
                     self.ok(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
             else:
                 try:
                     if (DTester.__isbound(step[0])):
-                        step[0]()
+                        #for execution trace
+                        if (self.dtestmaster.getTrace()):
+                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                        #for pseudo-execution
+                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                            step[0]()
                     else:
-                        step[0](self)
+                        #for execution trace
+                        if (self.dtestmaster.getTrace()):
+                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                        #for pseudo-execution
+                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                            step[0](self)
                 except NotImplementedError, err:
                     self.logger.error("Step <%r> failed <%r>" % (step[0],err))
                     self.ok(False,desc="Step <%r> failed <%r>" % (step[0],err))
