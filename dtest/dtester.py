@@ -109,6 +109,11 @@ class DTester (Thread):
         self.__runSteps           = []
         self.__initializeSteps    = []
 
+    def __getHasTimedOut(self):
+        return self.__expectDidTimeOut
+        
+    hasTimedOut = property(fget=__getHasTimedOut)
+        
     def __getName(self):
         return self.getName()
 
@@ -195,7 +200,7 @@ class DTester (Thread):
     def __expectTimedOut(self,msg=None):
         self.logger.warning("Expect timeout: %s" % msg)
         self.abort()
-        self.__expectDidTimeOut = True
+        self.__expectDidTimeOut = True        
         # notify session 
         self.session.hasTimedOut = True
 
@@ -230,7 +235,7 @@ class DTester (Thread):
         # We will get there because time out handler did tell
         # the session handler the test has timedout
         if self.__expectDidTimeOut:
-            self.logger.warn("Monitored = %s" % monitored.getvalue())
+            #self.logger.warn("Monitored = %s" % monitored.getvalue())
             return False
         else:
             if timeout != None:

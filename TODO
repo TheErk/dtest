@@ -13,3 +13,8 @@
 - design and create a default and simple test files sets
   which may be handled by each DTesters
 
+- add options for expectFromCommand to modify its semantics ( actually next steps are executed if expectFromCommand timeout or not ) 
+
+- when a timeout is raised, put outputs in a file and invite the user to read it
+
+- improve monitoring for expectFromCommand : the way of monitoring is too simple and probably innefficient when the session output is huge 

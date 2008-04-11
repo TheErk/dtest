@@ -61,7 +61,7 @@ class SSHSessionHandler(dtest.SessionHandler):
             self.SSHShell.sendall(self.CTRL_C)
             self.SSHShell.sendall("exit")
             self.SSHClient.close()
-            super(SSHSessionHandler,self).clsoe()
+            super(SSHSessionHandler,self).close()
 
     def send(self, string):
         super(SSHSessionHandler,self).send(string)        

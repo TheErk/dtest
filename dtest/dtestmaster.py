@@ -208,7 +208,8 @@ class DTestMaster(Thread):
         self.logger.debug("Defined %d barriers" % len(self.barriers))
         self.nb_steps += len(self.barriers)
         # plan test 
-        self.__builder.set_plan(self.nb_steps, None)
+        # We add a final step for consolidated timeout
+        self.__builder.set_plan(self.nb_steps+1, None)
         # Start all registered dtesters
         for dtester in self.dtesters:
             self.logger.info("Starting <"+ dtester.getName()+ ">...")
@@ -231,7 +232,16 @@ class DTestMaster(Thread):
             self.dtesters.difference_update(self.joinedDTesters)
         if self.timeout !=None:
             t.cancel()
-        endTime = time.clock()   
+        endTime = time.clock()
+        noTimeOut = True
+        for dtester in self.joinedDTesters:
+            if dtester.hasTimedOut:
+                noTimeOut = False
+                self.__builder.ok(False,"Tester <%s> did timeout" % dtester.getName())
+                break;
+        if noTimeOut:
+            self.__builder.ok(True,"No Tester did timeout.")
+        
 
     def startTestSequence(self):
         """Start the test sequence"""
