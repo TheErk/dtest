@@ -364,17 +364,17 @@ class DTester (Thread):
                 try:
                     if (DTester.__isbound(step[0])):
                         #for execution trace
-                        if (self.dtestmaster.getTrace()):
+                        if (self.dtestmaster.trace):
                             self.dtestmaster.traceStep(self.getName(),self.getName(),step)
                         #for pseudo-execution
-                        if ((not self.dtestmaster.getPseudoExec())or isBarrierStep):
+                        if ((not self.dtestmaster.pseudoexec)or isBarrierStep):
                             step[0](*(step[1]),**(step[2]))
                     else:
                         #for execution trace
-                        if (self.dtestmaster.getTrace()):
+                        if (self.dtestmaster.trace):
                             self.dtestmaster.traceStep(self.getName(),self.getName(),step)
                         #for pseudo-execution
-                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                        if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
                             step[0](self,*(step[1]),**(step[2]))
                 except NotImplementedError, err:
                     self.logger.error("RunStep <%r> failed <%r>" % (step[0],err))
@@ -383,17 +383,17 @@ class DTester (Thread):
                 try:
                     if (DTester.__isbound(step[0])):
                         #for execution trace
-                        if (self.dtestmaster.getTrace()):
+                        if (self.dtestmaster.trace):
                             self.dtestmaster.traceStep(self.getName(),self.getName(),step)
                         #for pseudo-execution
-                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                        if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
                             step[0]()
                     else:
                         #for execution trace
-                        if (self.dtestmaster.getTrace()):
+                        if (self.dtestmaster.trace):
                             self.dtestmaster.traceStep(self.getName(),self.getName(),step)
                         #for pseudo-execution
-                        if ((not self.dtestmaster.getPseudoExec()) or isBarrierStep):
+                        if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
                             step[0](self)
                 except NotImplementedError, err:
                     self.logger.error("Step <%r> failed <%r>" % (step[0],err))

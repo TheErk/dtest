@@ -148,7 +148,7 @@ dtest.DTester.logger.setLevel(level=logging.WARNING)
 dtest.SSHSessionHandler.logger.setLevel(level=logging.WARNING)
 
 myDTestMaster = dtest.DTestMaster()
-myDTestMaster.setTrace(1)
+myDTestMaster.trace=1
 #register dtesters in DTestMaster
 myDTestMaster.register(tester1)
 myDTestMaster.register(tester2)
