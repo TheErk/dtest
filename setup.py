@@ -46,7 +46,7 @@ kw = {}
 
 from distutils.core import setup
 
-version_string='0.4'
+version_string='0.5'
 #version_string=version_string+"-"+time.strftime("%d%h%Y-%Hh%M")
 
 setup(name='dtest',

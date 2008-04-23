@@ -37,14 +37,16 @@ class SSHSessionHandler(dtest.SessionHandler):
     An SSH DTest session handler which may run command through an SSH connection
     """
     logging.getLogger("paramiko.transport").addHandler(dtest.DTester.sh)
-    def __init__(self,user,host='localhost'):
+    def __init__(self,user,host='localhost',ForwardX11=False):
         super(SSHSessionHandler,self).__init__(runCommandCapable=True, fileTransferCapable=False)
         self.host        = host
         self.user        = user
+        self.ForwardX11  = ForwardX11
         self.SSHClient   = None
         self.SSHShell    = None
         self.SFTPClient  = None
-
+        self.X11cookie   = None
+        
     def open(self,*args,**kwargs):
         self.SSHClient   = paramiko.SSHClient()
         self.SSHClient.load_system_host_keys()
@@ -52,6 +54,9 @@ class SSHSessionHandler(dtest.SessionHandler):
             self.SSHClient.connect(self.host,username=self.user)
             self.SSHShell   = self.SSHClient.invoke_shell('vt100',80,300)
             self.SFTPClient = self.SSHClient.open_sftp()
+            # Request X11 forwarding if session did ask for it
+            #if self.ForwardX11:
+            #    self.X11cookie = self.SSHShell.request_x11()
             self.sessionOpened = True
         except socket.error, err:
             self.sessionOpened = False

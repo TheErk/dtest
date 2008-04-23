@@ -49,7 +49,8 @@ dtester_ssh = dtest.DTester("dtester-ssh",
 
 dtester_ssh2 = dtest.DTester("dtester-ssh2",
                             session=dtest.SSHSessionHandler(param['user'],
-                                                            host=param['host']))
+                                                            host=param['host'],
+                                                            ForwardX11=True))
 
 
 # you may change the default time out value

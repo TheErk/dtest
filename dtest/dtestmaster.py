@@ -24,6 +24,9 @@ import TAP
 import threading
 from threading import Thread
 from dtester import DTester
+from trace_manager import TraceManager
+from trace_handler import TraceHandler
+#from tap_trace_handler import TAPTraceHandler
 import sys
 import os
 import time
@@ -36,8 +39,74 @@ try:
     set
 except NameError:
     from sets import Set as set, Immutable as frozenset
+
+class DTestMasterRunner(Thread):
+    """The Thread sub-class which effectively run the sequence
+    represented by the DTestMaster
+    """
+
+    logger = logging.getLogger("DTestMasterRunner")
     
-class DTestMaster(Thread):
+    def __init__(self, dtestmaster):
+        super(DTestMasterRunner,self).__init__(name="DTestMasterRunner-"+dtestmaster.name)
+        self.dtestmaster = dtestmaster
+        
+    def run(self):
+        """Run Thread method"""
+        self.dtestmaster.startTime = time.clock()
+        # set up global time out
+        if self.dtestmaster.timeout != None:
+            t = threading.Timer(self.dtestmaster.timeout,self.dtestmaster.globalTimeOutTriggered)
+            t.start()
+        # Initialize all registered dtesters
+        for dtester in self.dtestmaster.dtesters:
+            self.logger.info("Initializing <"+ dtester.getName()+ ">...")
+            try:
+                dtester.initialize()
+            except (UnknownBarrier,InvalidBarrierUsage), err:
+                self.logger.error("%s : %s" % (err.__class__,err))
+                t.cancel()
+                return
+            self.dtestmaster.nb_steps += dtester.nb_steps
+        self.logger.debug("Defined %d barriers" % len(self.dtestmaster.barriers))
+        self.dtestmaster.nb_steps += len(self.dtestmaster.barriers)
+        # plan test 
+        # We add a final step for consolidated timeout
+        self.dtestmaster.builder.set_plan(self.dtestmaster.nb_steps+1, None)
+        # Start all registered dtesters
+        for dtester in self.dtestmaster.dtesters:
+            self.logger.info("Starting <"+ dtester.getName()+ ">...")
+            dtester.start()
+            self.dtestmaster.runningDTesters += 1
+        self.logger.info("Now <%d> registered DTesters launched.",self.dtestmaster.runningDTesters)
+        # Wait for DTesters to terminate
+        self.dtestmaster.joinedDTesters = set()
+        while self.dtestmaster.runningDTesters > 0:
+            for dtester in self.dtestmaster.dtesters:
+                if dtester.isAlive():
+                    time.sleep(1)
+                else:                    
+                    dtester.join()
+                    self.logger.info("joined <"+ dtester.getName()+ ">.")
+                    self.dtestmaster.joinedDTesters.add(dtester)                    
+                    self.dtestmaster.runningDTesters -= 1;
+                    dtester.session.close()
+            # use the powerful difference_update on set
+            # to continue looping on remaining (not already joined dtesters)
+            self.dtestmaster.dtesters.difference_update(self.dtestmaster.joinedDTesters)
+        if self.dtestmaster.timeout!=None:
+            t.cancel()
+        endTime = time.clock()
+        noTimeOut = True
+        for dtester in self.dtestmaster.joinedDTesters:
+            if dtester.hasTimedOut:
+                noTimeOut = False
+                self.dtestmaster.builder.ok(False,"Tester <%s> did timeout" % dtester.getName())
+                break;
+        if noTimeOut:
+            self.dtestmaster.builder.ok(True,"No Tester did timeout.")
+    
+class DTestMaster():
     """The master object which run and synchronize the differents L{DTester}
 
     Each L{DTester} which wants to participate to the test should
@@ -56,28 +125,48 @@ class DTestMaster(Thread):
     fmt = logging.Formatter(fmt="## [%(threadName)s]|%(name)s::%(levelname)s:: %(message)s")
     sh.setFormatter(fmt)
     logger.addHandler(sh)
-    def __init__(self, name=None):
+    def __init__(self, name=None, description=None):
         if name==None:
-            super(DTestMaster,self).__init__(name="DTestMaster")
+            self.__name="DTestMaster"
         else:
-            super(DTestMaster,self).__init__(name="DTestMaster-"+name+"-")
-        self.__builder   = TAP.Builder.create()
-        self.barriers  = {}
-        self.dtesters  = set()
-        self.startTime = 0
-        self.endTime   = 0
+            self.__name=name
+        if description==None:
+            self.__description=""
+        else:
+            self.__description=description
+               
+        self.builder      = TAP.Builder.create()
+        self.barriers     = {}
+        self.dtesters     = set()
+        self.startTime    = 0
+        self.endTime      = 0
         self.runningDTesters = 0
-        self.nb_steps  = 0
-        self.timeout   = None
+        self.nb_steps        = 0
+        self.timeout         = None
+        self.runner          = None
+
         #for execution trace
         #activate pseudoexecution mode
         self.__pseudoexec=0
         #activate tracing mode
         self.__trace=0
         #a queue for globally ordering execution steps from DTester threads
-        self.__global_execution_steps_queue = Queue(0)
+        self.global_execution_steps_queue = Queue(0)
         #the list of steps building from global_execution_steps_queue
-        self.__execution_steps_list = [] 
+        self.__execution_steps_list = []
+
+        # create and register a default TAP trace 
+        self.traceManager = TraceManager()
+        self.traceManager.registerTraceHandler(TraceHandler())
+        self.traceManager.newSequence(self)
+
+    def __getName(self):
+        return self.__name
+    name=property(fget=__getName,doc='sequence name')
+
+    def __getDescription(self):
+        return self.__description
+    description=property(fget=__getDescription,doc='sequence description')
         
     def __getTrace(self):
         return self.__trace
@@ -92,17 +181,17 @@ class DTestMaster(Thread):
     pseudoexec=property(fget=__getPseudoExec,fset=__setPseudoExec,doc='pseudo-execution trace')
     
 #    def __getExecutionStepsQueue(self):
-#            return self.__global_execution_steps_queue
+#            return self.global_execution_steps_queue
 #    global_execution_steps_queue=property(fget=__getglobal_execution_steps_queue,doc='execution steps queue')
     
     def buildStepSequenceList(self):
-        while not self.__global_execution_steps_queue.empty():
-            line=self.__global_execution_steps_queue.get()
+        while not self.global_execution_steps_queue.empty():
+            line=self.global_execution_steps_queue.get()
             self.__execution_steps_list.append(line) 
     
     def traceStep(self,source,destination,step):
         """Add an execution trace step to the execution steps queue to order them all"""
-        self.__global_execution_steps_queue.put((source,destination,step))
+        self.global_execution_steps_queue.put((source,destination,step))
 
     def mscGenerator(self):
         """We generate message sequence chart diagram from the execution steps enqueued"""
@@ -241,10 +330,10 @@ class DTestMaster(Thread):
                
     def ok(self, dtester, *args, **kwargs):
         """ok TAP method"""
-        self.__builder.ok(*args,**kwargs)
+        self.builder.ok(*args,**kwargs)
         return 0
 
-    def __globalTimeOutTriggered(self):
+    def globalTimeOutTriggered(self):
         self.logger.fatal("Global Time out triggered, exiting")
         for dtester in self.dtesters:
             dtester.abort()
@@ -267,12 +356,12 @@ class DTestMaster(Thread):
         
         self.logger.info("DTester < "+ dtester.getName()+ "> entered barrier <" + barrierId + ">.")
         if len(self.barriers[barrierId]['reached']) == 0:
-            self.__builder.ok(True,desc="Barrier <%s> crossed by all <%d> registered DTester(s)" % (barrierId, len(self.barriers[barrierId]['init']))) 
+            self.builder.ok(True,desc="Barrier <%s> crossed by all <%d> registered DTester(s)" % (barrierId, len(self.barriers[barrierId]['init']))) 
             self.barriers[barrierId]['barrier'].set()
         else:
             self.barriers[barrierId]['barrier'].wait(timeout)
             if (not self.barriers[barrierId]['barrier'].isSet()):
-                self.__builder.ok(False,desc="Barrier <%s> timed-out for DTester <%s> waiting no more than <%f seconds>" % (barrierId,dtester.getName(),timeout))
+                self.builder.ok(False,desc="Barrier <%s> timed-out for DTester <%s> waiting no more than <%f seconds>" % (barrierId,dtester.getName(),timeout))
                 # re-add myself since I did timed-out
                 self.barriers[barrierId]['reached'].add(dtester)
                 # relieve other to cross the barrier.
@@ -282,70 +371,17 @@ class DTestMaster(Thread):
                 # and a barrier failed if only 1 stakeholder missed it
                 self.barriers[barrierId]['barrier'].set()
             else:
-                self.logger.info("DTester < "+ dtester.getName()+ "> crossed barrier <" + barrierId + ">.") 
-
-    def run(self):
-        """Run thread method"""
-        self.startTime = time.clock()
-        # set up global time out
-        if self.timeout != None:
-            t = threading.Timer(self.timeout,self.__globalTimeOutTriggered)
-            t.start()
-        # Initialize all registered dtesters
-        for dtester in self.dtesters:
-            self.logger.info("Initializing <"+ dtester.getName()+ ">...")
-            try:
-                dtester.initialize()
-            except (UnknownBarrier,InvalidBarrierUsage), err:
-                self.logger.error("%s : %s" % (err.__class__,err))
-                t.cancel()
-                return
-            self.nb_steps += dtester.nb_steps
-        self.logger.debug("Defined %d barriers" % len(self.barriers))
-        self.nb_steps += len(self.barriers)
-        # plan test 
-        # We add a final step for consolidated timeout
-        self.__builder.set_plan(self.nb_steps+1, None)
-        # Start all registered dtesters
-        for dtester in self.dtesters:
-            self.logger.info("Starting <"+ dtester.getName()+ ">...")
-            dtester.start()
-            self.runningDTesters += 1
-        self.logger.info("Now <%d> registered DTesters launched.",self.runningDTesters)
-        # Wait for DTesters to terminate
-        self.joinedDTesters = set()
-        while self.runningDTesters > 0:
-            for dtester in self.dtesters:
-                if dtester.isAlive():
-                    time.sleep(1)
-                else:                    
-                    dtester.join()
-                    self.logger.info("joined <"+ dtester.getName()+ ">.")
-                    self.joinedDTesters.add(dtester)                    
-                    self.runningDTesters -= 1;
-            # use the powerful difference_update on set
-            # to continue looping on remaining (not already joined dtesters)
-            self.dtesters.difference_update(self.joinedDTesters)
-        if self.timeout !=None:
-            t.cancel()
-        endTime = time.clock()
-        noTimeOut = True
-        for dtester in self.joinedDTesters:
-            if dtester.hasTimedOut:
-                noTimeOut = False
-                self.__builder.ok(False,"Tester <%s> did timeout" % dtester.getName())
-                break;
-        if noTimeOut:
-            self.__builder.ok(True,"No Tester did timeout.")
+                self.logger.info("DTester < "+ dtester.getName()+ "> crossed barrier <" + barrierId + ">.")     
         
 
     def startTestSequence(self):
-        """Start the test sequence"""
-        self.start()
+        """Start the test sequence"""        
+        self.runner = DTestMasterRunner(self)
+        self.runner.start()
 
     def waitTestSequenceEnd(self):
         """Wait for the test sequence ending"""
-        self.join()
+        self.runner.join()
         #execution trace 
         if (self.trace):
             self.buildStepSequenceList()
