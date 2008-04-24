@@ -25,14 +25,11 @@ from threading import Thread
 from dtester import DTester
 from trace_manager import TraceManager
 from TAP_trace_handler import TAPTraceHandler
-#from tap_trace_handler import TAPTraceHandler
 import sys
 import os
 import time
 import signal
 import logging
-#for execution trace
-from Queue import Queue
 
 try:
     set
@@ -127,8 +124,7 @@ class DTestMaster(object):
         self.__nbSteps        = 0
         self.timeout         = None
         self.runner          = None
-
-        #for execution trace
+                
         #activate pseudo-execution mode
         self.__pseudoexec=0        
 
@@ -249,7 +245,9 @@ class DTestMaster(object):
         self.nbSteps += len(self.barriers)        
         # We add a final step for consolidated timeout
         self.nbSteps += 1;
-        self.traceManager.initializeSequence() 
+        # initialize traces handlers
+        self.traceManager.initializeSequence()
+        # now launch the sequenec 
         self.runner = DTestMasterRunner(self)
         self.runner.start()
 
