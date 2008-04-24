@@ -68,11 +68,11 @@ def createLocalFile(dtester, filename, content):
     f = file(filename,'w+')
     f.write(content)
     f.close()
-    dtester.ok(True,"createdLocalFile <%s> " % filename)
+    return True
 
 def compareFiles(dtester, file1, file2):
     import filecmp
-    dtester.ok(filecmp.cmp(file1,file2),"Compare <%s> with <%s>" %(localfile1,localfile2))
+    return filecmp.cmp(file1,file2)
     
 dtest.DTester.logger.setLevel(level=logging.WARNING)
 
@@ -90,7 +90,7 @@ remotefile2=remotefile1+".renamed"
 localfile2=localfile1+".getted"
 
 dtester_ssh2.addRunStep(createLocalFile,localfile1,"This file has been written locally")
-dtester_ssh2.nb_steps += 1
+dtester_ssh2.addRunStep("ok",dtester_ssh2.getFutureLastStepStatus,"createdLocalFile <%s> " % localfile1)
 dtester_ssh2.addRunStep("putFile",localfile1,remotefile1)
 dtester_ssh2.addRunStep("ok",True,"file <%s> transfered to <%s> " % (localfile1,remotefile1))
 dtester_ssh2.addRunStep("runCommand",command="mv %s %s" % (remotefile1,remotefile2) )
@@ -99,7 +99,7 @@ dtester_ssh2.addRunStep("waitCommandTermination")
 dtester_ssh2.addRunStep("getFile",remotefile1,localfile2)
 dtester_ssh2.addRunStep("ok",True,"file <%s> transfered from <%s> " % (localfile2,remotefile2))
 dtester_ssh2.addRunStep(compareFiles,localfile1,localfile2)
-dtester_ssh2.nb_steps += 1
+dtester_ssh2.addRunStep("ok",dtester_ssh2.getFutureLastStepStatus,"Compare <%s> with <%s>" %(localfile1,localfile2))
 
 # Here begins the test
 dtest.DTestMaster.logger.setLevel(level=logging.WARNING)
@@ -107,7 +107,7 @@ dtest.DTester.logger.setLevel(level=logging.WARNING)
 dtest.SSHSessionHandler.logger.setLevel(level=logging.WARNING)
 
 def goTest():
-    myDTestMaster = dtest.DTestMaster()
+    myDTestMaster = dtest.DTestMaster("DTest SSH Session Sequence")
     myDTestMaster.timeout = 40
     myDTestMaster.register(dtester_ssh)
     myDTestMaster.register(dtester_ssh2)

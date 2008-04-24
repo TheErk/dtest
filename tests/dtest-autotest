@@ -32,7 +32,7 @@ dtest.DTestMaster.logger.setLevel(level=logging.ERROR)
 dtest.DTester.logger.setLevel(level=logging.ERROR)
 
 def myCustomStep(dtester, *args, **kwargs):
-   dtester.ok(True,"myCustomStep")
+   return True
 
 def myInvalidCustomStep(bla, blo):
    print "myInvalidCustomStep"
@@ -72,7 +72,7 @@ tester2.addRunStep(tester2.ok,True,desc="ok step using 'tester2.ok' bound method
 #    then DTest will check that first arg is either self or dtester
 #    and will provider the "self" caller as first arg
 tester1.addRunStep(myCustomStep)
-tester1.nb_steps += 1
+tester1.addRunStep("ok",tester1.getFutureLastStepStatus,"myCustomStep")
 try:
    tester1.addRunStep(myInvalidCustomStep)
 except dtest.DTester.InvalidStepFunctionException, e:
@@ -90,7 +90,7 @@ tester1.addRunStep("barrier","timedBarrier",10.6)
 tester2.addRunStep("barrier","timedBarrier",1.5)
 tester2.addRunStep("ok",True,desc="--END step--")
 
-myDTestMaster = dtest.DTestMaster()
+myDTestMaster = dtest.DTestMaster("DTest-Autotest",description="DTest autotests sequence not using sesssion")
 myDTestMaster.register(tester1)
 myDTestMaster.register(tester2)
 myDTestMaster.startTestSequence()

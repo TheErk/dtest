@@ -125,6 +125,7 @@ class SessionHandler (object):
     def open(self,*args,**kwargs):
         """ Open the session """
         self.sessionOpened = True
+        return True
 
     def close(self):
         """ Close the session. """
@@ -135,6 +136,7 @@ class SessionHandler (object):
         if (not self.stdout==None):
             self.stdout.close()    
         self.sessionOpened = False 
+        return True
         
     def updateEnviron(self,environ):
         """ Update the environment """
@@ -142,6 +144,7 @@ class SessionHandler (object):
         for envvar in self.environ.iteritems():
            envcmd = "%s=%s" % envvar
            self.sendall(envcmd+self.NEWLINE) 
+        return True
 
     def send(self, string):
         """ Send a string to the session """
@@ -149,7 +152,8 @@ class SessionHandler (object):
         if (not self.stdin==None):
             self.stdin.write(string)
         if (self.__isnotoverloaded(SessionHandler.send)):
-            raise self.UnableToRunCommandException("Cannot send")        
+            raise self.UnableToRunCommandException("Cannot send")     
+        return True   
 
     def sendall(self, string):
         self.lastSent = string
@@ -157,10 +161,12 @@ class SessionHandler (object):
             self.stdin.write(string)
         if (self.__isnotoverloaded(SessionHandler.sendall)):
             raise self.UnableToRunCommandException("Cannot sendall")
+        return True
 
     def recv_ready(self):
         if (self.__isnotoverloaded(SessionHandler.recv_ready)):
             raise self.UnableToRunCommandException("Cannot recv_ready")
+        return True
 
     def recv(self, size, buffer=None):
         """Receive a string from the session"""
@@ -168,13 +174,16 @@ class SessionHandler (object):
             self.stdout.write(self.__lastReceive)
         if (self.__isnotoverloaded(SessionHandler.recv)):
             raise self.UnableToRunCommandException("Cannot recv")
+        return True
 
     def putFile(self, sourcePath, destinationPath):
         """ Put a file from sourcePath to destinationPath """
         if (self.__isnotoverloaded(SessionHandler.putFile)):
             raise self.UnableToFileTransferException("Cannot putFile")
+        return True
 
     def getFile(self, sourcePath, destinationPath):
         """ Get a file from sourcePath to destinationPath """
         if (self.__isnotoverloaded(SessionHandler.getFile)):
             raise self.UnableToFileTransferException("Cannot getFile")
+        return True

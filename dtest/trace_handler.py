@@ -27,17 +27,41 @@ class TraceHandler (object):
 
     A dtest trace handler 
     """
-
+    
+    class TraceHandlerAbstractMethod(Exception):
+        "Used in order to enforce sort-of abstract method"
+        
     logger = logging.getLogger("TraceHandler")
+    
+    def __getFileOrOpenPath(cls,out,ext=None):
+        if (isinstance(out,file)):
+            return out
+        if (isinstance(out,type(""))):
+            if (ext):
+                return file(out+ext,"w+")
+            else:
+                return file(out,"w+")
+            
+    getFileOrOpenPath = classmethod(__getFileOrOpenPath)
+    
+    def __closeIfNotStdout(self,out):
+        if (out != sys.stdout):
+            out.close()
+            
+    closeIfNotStdout = classmethod(__closeIfNotStdout)
     
     def __init__(self,name="TraceHandler"):
         self.__dtesters = set()
         self.__name     = name        
+        
+
+    def __getDTesters(self):
+        return self.__dtesters
+    dtesters = property(fget=__getDTesters,doc="dtesters getter")
 
     def __getName(self):
         return self.__name
     name=property(fget=__getName,doc='handler name')
-
 
     def registerDTester(self, dtester):
         self.logger.info("Registering DTester <" + dtester.name + ">...")
@@ -45,18 +69,30 @@ class TraceHandler (object):
         self.__dtesters.add(dtester)
 
     def newSequence(self, dtestmaster):
-        self.logger.info("Registering Test Sequence <" + dtestmaster.name + ">...")
+        raise TraceHandlerAbstractMethod
 
     def initializeSequence(self):
         """ Initialize sequence for every trace trace handler
         This gives a chance for the handler to build a header
         """
+        self.logger.info("Current sequence has <" + self.__dtesters.__len__() + "> DTesters.")
+        pass
 
     def finalizeSequence(self):
         """ Finalize the sequence for every trace trace handler.
         This gives a chance for the handler to build a trailer.
         """
+        pass
+        
+    def traceStep(self,srcDTester,dstDTester,step):
+        pass
+    
+    def traceStepResult(self,ok_nok,desc,skip=None,todo=None):
+        raise TraceHandlerAbstractMethod
+    
+    def traceStepComment(self,comment):
+        pass
 
     def finalize(self):
-        """Add an execution trace step to the execution steps queue to order them all
-        One may not call newSequence after that call"""
+        """Should finalize the handler"""
+        raise TraceHandlerAbstractMethod

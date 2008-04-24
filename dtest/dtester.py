@@ -103,11 +103,23 @@ class DTester (Thread):
         self.timeout            = timeout
         self.environ            = None
         self.dtestmaster        = None
-        self.nb_steps           = 0
+        self.__nbSteps           = 0
         
         self.__expectDidTimeOut   = False
         self.__runSteps           = []
         self.__initializeSteps    = []
+        self.__lastStepStatus     = False;
+        
+    def __getNbSteps(self):
+        return self.__nbSteps    
+    
+    nbSteps=property(fget=__getNbSteps,doc='Number of steps in the DTest sequence')
+    
+    def getLastStepStatus(self):
+        return self.__lastStepStatus
+    
+    def getFutureLastStepStatus(self):
+        return self.getLastStepStatus             
 
     def __getHasTimedOut(self):
         return self.__expectDidTimeOut
@@ -256,20 +268,20 @@ class DTester (Thread):
 
     def waitDuring(self,duration):
         time.sleep(duration)
+        return True
     
     def terminateCommand(self):
         """Send to the session handler DTester.session the command for terminating"""
         self.session.sendall(self.session.CTRL_C)
-        self.session.sendall(self.session.NEWLINE)
-        return True
+        return self.session.sendall(self.session.NEWLINE)        
 
     def putFile(self,srcPath,dstPath):
         self.session.openIfNotOpened()
-        self.session.putFile(srcPath,dstPath)
-
+        return self.session.putFile(srcPath,dstPath)
+        
     def getFile(self,srcPath,dstPath):
         self.session.openIfNotOpened()
-        self.session.getFile(srcPath,dstPath)
+        return self.session.getFile(srcPath,dstPath)
 
     def addInitializeStep(self, stepmethod, *args, **kwargs):
         if not callable(stepmethod):
@@ -319,7 +331,7 @@ class DTester (Thread):
             if stepmethod.im_func == DTester.barrier.im_func:
                 self.addInitializeStep(DTester.registerForBarrier,args[0])
             elif stepmethod.im_func == DTester.ok.im_func:
-                self.nb_steps += 1
+                self.__nbSteps += 1
 
         if DTester.__isfunction_or_unboundmethod(stepmethod):
             # We check first arg to be self or dtester 
@@ -360,42 +372,37 @@ class DTester (Thread):
             self.logger.debug("run :: step[0]: %s", str(step[0]))
             self.logger.debug("run :: step[1:] %s", str(step[1:]))
             isBarrierStep=(step[0].__name__==self.barrier.__name__)
+            # Trace the step (not in the barrier step
+            # it will be traced when called ? FIXME is it a good way to do that ?
+            if (not isBarrierStep):
+                self.dtestmaster.traceManager.traceStep(self,self,step)    
             if (len(step[1]) > 0) or (len(step[2]) > 0):
                 try:
-                    if (DTester.__isbound(step[0])):
-                        #for execution trace
-                        if (self.dtestmaster.trace):
-                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                    if (DTester.__isbound(step[0])):                        
                         #for pseudo-execution
                         if ((not self.dtestmaster.pseudoexec)or isBarrierStep):
-                            step[0](*(step[1]),**(step[2]))
+                            self.__lastStepStatus = step[0](*(step[1]),**(step[2]))
                     else:
-                        #for execution trace
-                        if (self.dtestmaster.trace):
-                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
                         #for pseudo-execution
                         if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
-                            step[0](self,*(step[1]),**(step[2]))
+                            self.__lastStepStatus = step[0](self,*(step[1]),**(step[2]))
                 except NotImplementedError, err:
                     self.logger.error("RunStep <%r> failed <%r>" % (step[0],err))
-                    self.ok(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
+                    self.__lastStepStatus = False
+                    self.dtestmaster.traceManager.traceStepResult(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
             else:
                 try:
-                    if (DTester.__isbound(step[0])):
-                        #for execution trace
-                        if (self.dtestmaster.trace):
-                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                    if (DTester.__isbound(step[0])):                        
                         #for pseudo-execution
                         if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
-                            step[0]()
-                    else:
-                        #for execution trace
-                        if (self.dtestmaster.trace):
-                            self.dtestmaster.traceStep(self.getName(),self.getName(),step)
+                            self.__lastStepStatus = step[0]()
+                    else:                        
                         #for pseudo-execution
                         if ((not self.dtestmaster.pseudoexec) or isBarrierStep):
-                            step[0](self)
+                            self.__lastStepStatus = step[0](self)
                 except NotImplementedError, err:
                     self.logger.error("Step <%r> failed <%r>" % (step[0],err))
-                    self.ok(False,desc="Step <%r> failed <%r>" % (step[0],err))
+                    self.__lastStepStatus = False
+                    self.dtestmaster.traceManager.traceStepResult(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
+                    
         self.logger.info("DTester <%s> has terminated." % self.getName())

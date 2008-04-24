@@ -43,7 +43,7 @@ class TraceManager (object):
         "Used when setting the next sequence before the preceding did finish"
 
     class SequenceAlreadyRunningException(Exception):
-        "Used when setting an alreay running sequence"
+        "Used when setting an already running sequence"
         
     logger = logging.getLogger("TraceManager")
     def __init__(self):
@@ -75,7 +75,7 @@ class TraceManager (object):
         """
         for handler in self.__handlers:
             # we register all dtester from the tester into handler
-            for dtesters in self.__dtestSequence.dtesters:
+            for dtester in self.__dtestSequence.dtesters:
                 handler.registerDTester(dtester)
             # then we initialize the Sequence
             handler.initializeSequence()
@@ -86,6 +86,18 @@ class TraceManager (object):
         """
         for handler in self.__handlers:
             handler.finalizeSequence()
+            
+    def traceStep(self,srcDTester,dstDTester,step):
+        for handler in self.__handlers:
+            handler.traceStep(srcDTester,dstDTester,step)
+    
+    def traceStepResult(self,ok_nok,desc=None,skip=None,todo=None):
+        for handler in self.__handlers:
+            handler.traceStepResult(ok_nok,desc,skip,todo)
+    
+    def traceStepComment(self,comment):
+        for handler in self.__handlers:
+            handler.traceStepComment(comment)
             
     def finalize(self):
         """Add an execution trace step to the execution steps queue to order them all

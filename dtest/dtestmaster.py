@@ -20,12 +20,11 @@
 ##
 ##-----------------------------------------------------------------------
 
-import TAP
 import threading
 from threading import Thread
 from dtester import DTester
 from trace_manager import TraceManager
-from trace_handler import TraceHandler
+from TAP_trace_handler import TAPTraceHandler
 #from tap_trace_handler import TAPTraceHandler
 import sys
 import os
@@ -58,21 +57,6 @@ class DTestMasterRunner(Thread):
         if self.dtestmaster.timeout != None:
             t = threading.Timer(self.dtestmaster.timeout,self.dtestmaster.globalTimeOutTriggered)
             t.start()
-        # Initialize all registered dtesters
-        for dtester in self.dtestmaster.dtesters:
-            self.logger.info("Initializing <"+ dtester.getName()+ ">...")
-            try:
-                dtester.initialize()
-            except (UnknownBarrier,InvalidBarrierUsage), err:
-                self.logger.error("%s : %s" % (err.__class__,err))
-                t.cancel()
-                return
-            self.dtestmaster.nb_steps += dtester.nb_steps
-        self.logger.debug("Defined %d barriers" % len(self.dtestmaster.barriers))
-        self.dtestmaster.nb_steps += len(self.dtestmaster.barriers)
-        # plan test 
-        # We add a final step for consolidated timeout
-        self.dtestmaster.builder.set_plan(self.dtestmaster.nb_steps+1, None)
         # Start all registered dtesters
         for dtester in self.dtestmaster.dtesters:
             self.logger.info("Starting <"+ dtester.getName()+ ">...")
@@ -101,13 +85,13 @@ class DTestMasterRunner(Thread):
         for dtester in self.dtestmaster.joinedDTesters:
             if dtester.hasTimedOut:
                 noTimeOut = False
-                self.dtestmaster.builder.ok(False,"Tester <%s> did timeout" % dtester.getName())
+                self.dtestmaster.traceManager.traceStepResult(False,"Tester <%s> did timeout" % dtester.getName())
                 break;
         if noTimeOut:
-            self.dtestmaster.builder.ok(True,"No Tester did timeout.")
+            self.dtestmaster.traceManager.traceStepResult(True,"No Tester did timeout.")
     
-class DTestMaster():
-    """The master object which run and synchronize the differents L{DTester}
+class DTestMaster(object):
+    """The master object which run and synchronize the different L{DTester}
 
     Each L{DTester} which wants to participate to the test should
     register itself in an instance of DTestMaster
@@ -131,175 +115,49 @@ class DTestMaster():
         else:
             self.__name=name
         if description==None:
-            self.__description=""
+            self.__description="None"
         else:
             self.__description=description
-               
-        self.builder      = TAP.Builder.create()
+                       
         self.barriers     = {}
         self.dtesters     = set()
         self.startTime    = 0
         self.endTime      = 0
         self.runningDTesters = 0
-        self.nb_steps        = 0
+        self.__nbSteps        = 0
         self.timeout         = None
         self.runner          = None
 
         #for execution trace
-        #activate pseudoexecution mode
-        self.__pseudoexec=0
-        #activate tracing mode
-        self.__trace=0
-        #a queue for globally ordering execution steps from DTester threads
-        self.global_execution_steps_queue = Queue(0)
-        #the list of steps building from global_execution_steps_queue
-        self.__execution_steps_list = []
+        #activate pseudo-execution mode
+        self.__pseudoexec=0        
 
         # create and register a default TAP trace 
         self.traceManager = TraceManager()
-        self.traceManager.registerTraceHandler(TraceHandler())
+        self.traceManager.registerTraceHandler(TAPTraceHandler())
         self.traceManager.newSequence(self)
+
+    def __getNbSteps(self):
+        return self.__nbSteps
+    def __setNbSteps(self,nbSteps):
+        self.__nbSteps = nbSteps
+        
+    nbSteps=property(fget=__getNbSteps,fset=__setNbSteps,doc='Number of steps in the DTest sequence')    
 
     def __getName(self):
         return self.__name
-    name=property(fget=__getName,doc='sequence name')
+    name=property(fget=__getName,doc='DTest Sequence name')
 
     def __getDescription(self):
         return self.__description
-    description=property(fget=__getDescription,doc='sequence description')
-        
-    def __getTrace(self):
-        return self.__trace
-    def __setTrace(self,v):
-        self.__trace=v
-    trace=property(fget=__getTrace,fset=__setTrace,doc='execution trace')
+    description=property(fget=__getDescription,doc='DTest Sequence description')
     
     def __getPseudoExec(self):
         return self.__pseudoexec    
     def __setPseudoExec(self,v):
         self.__pseudoexec=v
     pseudoexec=property(fget=__getPseudoExec,fset=__setPseudoExec,doc='pseudo-execution trace')
-    
-#    def __getExecutionStepsQueue(self):
-#            return self.global_execution_steps_queue
-#    global_execution_steps_queue=property(fget=__getglobal_execution_steps_queue,doc='execution steps queue')
-    
-    def buildStepSequenceList(self):
-        while not self.global_execution_steps_queue.empty():
-            line=self.global_execution_steps_queue.get()
-            self.__execution_steps_list.append(line) 
-    
-    def traceStep(self,source,destination,step):
-        """Add an execution trace step to the execution steps queue to order them all"""
-        self.global_execution_steps_queue.put((source,destination,step))
-
-    def mscGenerator(self):
-        """We generate message sequence chart diagram from the execution steps enqueued"""
-        f=open("execution_trace.msc","w")
-        f.write("entity "+self.getName()+'\n')
-        #we represent each step for msc diagram generation, we represent fully only "ok" and "barrier" steps
-        for line in self.__execution_steps_list:
-            src=line[0]
-            dest=line[1]
-            step=line[2]
-            methodName=step[0].__name__
-            firstArg=str(step[1])
-            firstArg = str.replace(firstArg,",","")
-            secondArg=""
-            #for the online msc generator http://websequencediagrams.com/ 
-            mscline=src+"->"+dest+":"+methodName+firstArg+secondArg
-            f.write(mscline+'\n')
-        f.close()
-        print "MSC execution trace generated in execution_trace.msc"
-
-    def promelaGenerator(self):
-        """We generate promela code from the execution steps list"""
-        testers_steps={}
-        lines=[]
-        barriername_list=[]
-        lines.append("/*type of message*/\n") 
-        lines.append("mtype = {a};\n\n")      
-        
-        #finding testers name
-        for tester in self.joinedDTesters:
-            testers_steps[tester.name]=[]
-        testers_steps[self.getName()]=[]
-        
-        #we group execution steps by tester
-        for line in self.__execution_steps_list:
-            src=line[0]
-            testers_steps[src].append(line)
-    
-        #building promela instructions        
-        for k in testers_steps.keys():
-            lines.append("proctype "+k+"()\n{\n\n")
-            nb_steps=0
-            if (len(testers_steps[k])==0):
-               lines.append("\tskip;\n")
-            for l in testers_steps[k]:
-                src=l[0]
-                dest=l[1]
-                step=l[2]
-                methodName=step[0].__name__
-                firstArg=str(step[1])
-                firstArg = str.replace(firstArg,"('","")
-                firstArg = str.replace(firstArg,"')","")
-                barrierKey = str.replace(firstArg,"',)","")
-                barrierName = str.replace(barrierKey,"(","")
-                barrierName = str.replace(barrierName,")","")
-                barrierName = str.replace(barrierName," ","_")          
-                if(methodName=="barrier"):
-                #handling barrier step
-                    if barrierName not in barriername_list:
-                        barriername_list.append(barrierName)
-                    if src!=dest:
-                        #lines.append("\t"+methodName+"_"+barriername+"_"+src+"!a;\n\n")
-                        lines.append("\t"+barrierName+" = "+barrierName+" + 1 ;\n\n")
-                        lines.append("\t("+barrierName+"=="+str(len(self.barriers[barrierKey]["init"]))+");\n\n")  
-                    #self barrier step:                     
-                    else:
-                        lines.append("\t"+methodName+"_"+str(nb_steps)+":printf(\""+methodName+"_"+str(nb_steps)+"\");\n\n")
-                else:
-                #other steps
-                    lines.append("\t"+methodName+"_"+str(nb_steps)+":printf(\""+methodName+"_"+str(nb_steps)+"\");\n\n")
-                nb_steps+=1
-            lines.append("}\n\n")
-        
-        promela_file=open("execution_trace.pml","w")
-        #adding channel declaration for barrier
-        #promela_file.write("/*chan declaration for barrier*/\n")
-        #for b in barriername_list:
-            #promela_file.write("chan barrier"+b+" = [1] of { byte } ;\n\n")
-        #adding barrier counter declaration
-        promela_file.write("/*barrier counter declaration*/\n")
-        for b in barriername_list:
-            promela_file.write("byte "+b+";\n\n")
-        for line in lines:
-           promela_file.write(line)
-        #initializing barriers
-        promela_file.write("init \n{\n")
-        for b in barriername_list:
-            promela_file.write("\t"+b+" = 0;\n")
-        promela_file.write("atomic {\n")
-        #atomicly launching processes
-        for key in testers_steps.keys():
-            promela_file.write("\trun "+key+"();\n")
-        promela_file.write("\t}\n")
-        promela_file.write("}\n")
-        promela_file.close()
-        print "Promela execution generated in execution_trace.pml"     
-
-        #declaration du type de message - ok
-        #declaration compteur de barrieres - ok
-        #declaration canaux barriere - ok
-        #gestion des barrieres - ok
-        #declaration des canaux - ok
-        #creation des proctypes - ok
-        #grouper les pas d'execution par proctype - ok
-        #transformation de chaque pas self en etiquette numerotee - ok
-        #initialisation des compteurs - ok
-        #lancement de chaque processus - ok
-        
+            
     def register(self, dtester):
         """Register the DTester dtester to this DTesMaster"""
         self.logger.info("Registering <" + dtester.getName() + ">...")
@@ -329,23 +187,24 @@ class DTestMaster():
             self.barriers[barrierId]['reached'].add(dtester)
                
     def ok(self, dtester, *args, **kwargs):
-        """ok TAP method"""
-        self.builder.ok(*args,**kwargs)
+        """ok TAP-like method"""
+        self.traceManager.traceStepResult(*args,**kwargs)
         return 0
 
     def globalTimeOutTriggered(self):
         self.logger.fatal("Global Time out triggered, exiting")
         for dtester in self.dtesters:
             dtester.abort()
+        self.traceManager.finalizeSequence()
+        # FIXME we should avoid exit for "multi sequence scenarii"
         os._exit(1)
         #sys.exit(1)
         
     def barrier(self, dtester, barrierId, timeout):
         """barrier DTest method"""
         # check whether the barrier has been registered
-        #for execution trace 
-        if ( self.trace ):
-            self.traceStep(dtester.getName(),self.getName(),(self.barrier,"('"+barrierId+"')",""))
+        # for execution trace
+        self.traceManager.traceStep(dtester,self,(self.barrier,"('"+barrierId+"')",""))             
         if not self.barriers.has_key(barrierId):
             raise UnknownBarrierException, "barrier ID ="+barrierId
         try:
@@ -356,12 +215,12 @@ class DTestMaster():
         
         self.logger.info("DTester < "+ dtester.getName()+ "> entered barrier <" + barrierId + ">.")
         if len(self.barriers[barrierId]['reached']) == 0:
-            self.builder.ok(True,desc="Barrier <%s> crossed by all <%d> registered DTester(s)" % (barrierId, len(self.barriers[barrierId]['init']))) 
+            self.traceManager.traceStepResult(True,desc="Barrier <%s> crossed by all <%d> registered DTester(s)" % (barrierId, len(self.barriers[barrierId]['init']))) 
             self.barriers[barrierId]['barrier'].set()
         else:
             self.barriers[barrierId]['barrier'].wait(timeout)
             if (not self.barriers[barrierId]['barrier'].isSet()):
-                self.builder.ok(False,desc="Barrier <%s> timed-out for DTester <%s> waiting no more than <%f seconds>" % (barrierId,dtester.getName(),timeout))
+                self.traceManager.traceStepResult(False,desc="Barrier <%s> timed-out for DTester <%s> waiting no more than <%f seconds>" % (barrierId,dtester.getName(),timeout))
                 # re-add myself since I did timed-out
                 self.barriers[barrierId]['reached'].add(dtester)
                 # relieve other to cross the barrier.
@@ -375,16 +234,28 @@ class DTestMaster():
         
 
     def startTestSequence(self):
-        """Start the test sequence"""        
+        """Start the test sequence"""
+        # Initialize all registered dtesters
+        for dtester in self.dtesters:
+            self.logger.info("Initializing <"+ dtester.getName()+ ">...")
+            try:
+                dtester.initialize()
+            except (UnknownBarrier,InvalidBarrierUsage), err:
+                self.logger.error("%s : %s" % (err.__class__,err))                
+                return
+            self.nbSteps += dtester.nbSteps
+        self.logger.debug("Defined %d barriers" % len(self.barriers))
+        # each barrier step will generate an ok step
+        self.nbSteps += len(self.barriers)        
+        # We add a final step for consolidated timeout
+        self.nbSteps += 1;
+        self.traceManager.initializeSequence() 
         self.runner = DTestMasterRunner(self)
         self.runner.start()
 
     def waitTestSequenceEnd(self):
         """Wait for the test sequence ending"""
+        # join the sequence runner
         self.runner.join()
-        #execution trace 
-        if (self.trace):
-            self.buildStepSequenceList()
-            #print self.__execution_steps_list
-            self.mscGenerator()
-            self.promelaGenerator()
+        # finalize trace 
+        self.traceManager.finalizeSequence()        
