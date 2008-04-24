@@ -48,3 +48,5 @@ This the DTest source release
    
    dtest-autotest
    dtest-sshtest
+   dtest-tracetest
+   dtest_md5.py

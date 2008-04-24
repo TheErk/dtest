@@ -1,7 +1,14 @@
-Original Authors
-----------------
+Original Authors:
+-----------------
 Frederik DEWEERDT 	: first dtest draft using XMLRCP and PyTAP
 Eric NOULARD (Erk) 	: second dtest draft using paramiko and expect-like idea
-Lionel DUROYON : 
-Maintainers : eric.noulard@gmail.com
+                          initial version of TraceHandler and TraceManager architecture
+Lionel DUROYON          : MSC and Promela Trace generators
+
+Contributors:
+-------------
+
+Maintainers: 
+------------
+   eric.noulard@gmail.com
 
