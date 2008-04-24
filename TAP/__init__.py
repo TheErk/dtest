@@ -36,17 +36,19 @@ class Builder(object):
     "_plan":    None,
     "current":  1,
     "has_plan": False,
+    "out": sys.stdout
   }
   global_test_builder = global_defaults.copy()
 
-  def __init__(self, plan=None, plan_param=None):
+  def __init__(self, plan=None, plan_param=None, out=sys.stdout):
     self.__dict__ = self.global_test_builder
     if plan: self.set_plan(plan, plan_param)
+    self.out = out
 
   @classmethod # XXX: why did this fail?
-  def create(cls, plan=None, plan_param=None):
+  def create(cls, plan=None, plan_param=None, out=sys.stdout):
     # self = new.instance(cls) # ? this sucks, too
-    self = Builder()
+    self = Builder(out=out)
     self.__dict__  = self.global_defaults.copy()
     if plan: self.set_plan(plan, plan_param)
     return self
@@ -65,9 +67,9 @@ class Builder(object):
 
     sys.stdout.write("%s %u" % (report, self.current))
 
-    if desc: sys.stdout.write(" - %s" % desc)
-    if skip: sys.stdout.write(" # SKIP %s" % skip)
-    if todo: sys.stdout.write(" # TODO %s" % todo)
+    if desc: self.out.write(" - %s" % desc)
+    if skip: self.out.write(" # SKIP %s" % skip)
+    if todo: self.out.write(" # TODO %s" % todo)
 
     print
 
