@@ -23,7 +23,6 @@
 import logging
 import sys
 from trace_handler import TraceHandler
-import TAP
 
 class MSCTraceHandler (TraceHandler):
     """Represents a DTest MSC trace handler.
@@ -35,8 +34,7 @@ class MSCTraceHandler (TraceHandler):
     
     def __init__(self,output=sys.stdout):
         super(MSCTraceHandler,self).__init__("MSCTraceHandler")    
-        self.output = TraceHandler.getFileOrOpenPath(output,ext=".msc")         
-        
+        self.output = TraceHandler.getFileOrOpenPath(output,ext=".msc")                 
             
     def newSequence(self, dtestmaster):
         self.logger.info("Registering Test Sequence <" + dtestmaster.name + ">...")        
@@ -47,7 +45,7 @@ class MSCTraceHandler (TraceHandler):
         This gives a chance for the handler to build a header
         """
         self.logger.info("Current sequence has <%d> DTesters." % self.dtesters.__len__())        
-        self.output.write("entity "+dtestmaster.name+'\n')                
+        self.output.write("entity "+self.dtestmaster.name+'\n')                
         
     def traceStep(self,srcDTester,dstDTester,step):
         methodName=step[0].__name__
@@ -55,33 +53,15 @@ class MSCTraceHandler (TraceHandler):
         firstArg = str.replace(firstArg,",","")
         secondArg=""
         #for the online msc generator http://websequencediagrams.com/ 
-        mscline=src.name+"->"+dest.name+":"+methodName+firstArg+secondArg
-        output.write(mscline+'\n')
+        mscline=srcDTester.name+"->"+dstDTester.name+":"+methodName+firstArg+secondArg
+        self.output.write(mscline+'\n')
     
-    def traceStepResult(self,ok_nok,desc,skip,todo):
+    def traceStepResult(self,ok_nok,desc,skip,todo):        
         pass
     
     def traceStepComment(self,comment):
+        # FIXME implement comments in the MSC?
         pass
 
     def finalize(self):        
         TraceHandler.closeIfNotStdout(self.output)
-
-    def mscGenerator(self):
-        """We generate message sequence chart diagram from the execution steps enqueued"""
-        f=open("execution_trace.msc","w")
-        f.write("entity "+self.getName()+'\n')
-        #we represent each step for msc diagram generation, we represent fully only "ok" and "barrier" steps
-        for line in self.__execution_steps_list:
-            src=line[0]
-            dest=line[1]
-            step=line[2]
-            methodName=step[0].__name__
-            firstArg=str(step[1])
-            firstArg = str.replace(firstArg,",","")
-            secondArg=""
-            #for the online msc generator http://websequencediagrams.com/ 
-            mscline=src+"->"+dest+":"+methodName+firstArg+secondArg
-            f.write(mscline+'\n')
-        f.close()
-        print "MSC execution trace generated in execution_trace.msc"

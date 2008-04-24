@@ -130,7 +130,7 @@ class DTestMaster(object):
 
         # create and register a default TAP trace 
         self.traceManager = TraceManager()
-        self.traceManager.registerTraceHandler(TAPTraceHandler())
+        self.traceManager.register(TAPTraceHandler())
         self.traceManager.newSequence(self)
 
     def __getNbSteps(self):
@@ -146,13 +146,19 @@ class DTestMaster(object):
 
     def __getDescription(self):
         return self.__description
-    description=property(fget=__getDescription,doc='DTest Sequence description')
+    def __setDescription(self,description):
+        self.__description = description
+    description=property(fget=__getDescription,fset=__setDescription,doc='DTest Sequence description')
     
     def __getPseudoExec(self):
         return self.__pseudoexec    
     def __setPseudoExec(self,v):
         self.__pseudoexec=v
     pseudoexec=property(fget=__getPseudoExec,fset=__setPseudoExec,doc='pseudo-execution trace')
+    
+    def registerTraceManager(self,traceManager):
+        self.traceManager = traceManager 
+        self.traceManager.newSequence(self)
             
     def register(self, dtester):
         """Register the DTester dtester to this DTesMaster"""

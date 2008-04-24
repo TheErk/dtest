@@ -50,7 +50,7 @@ class TraceManager (object):
         self.__dtestSequence = None
         self.__handlers      = set()
     
-    def registerTraceHandler(self, traceHandler):
+    def register(self, traceHandler):
         self.logger.info("Registering Trace Handler <" + traceHandler.name + ">...")
         # Add traceHandler to the set of handlers
         self.__handlers.add(traceHandler)

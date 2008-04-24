@@ -40,7 +40,8 @@ class TAPTraceHandler (TraceHandler):
     def newSequence(self, dtestmaster):
         self.logger.info("Registering Test Sequence <" + dtestmaster.name + ">...")
         self.builder      = TAP.Builder.create(out=self.output)
-        self.dtestmaster  = dtestmaster
+        self.dtestmaster    = dtestmaster
+        self.sequence_passed = True 
 
     def initializeSequence(self):    
         self.logger.info("Current sequence has <%d> DTesters." % self.dtesters.__len__())
@@ -51,10 +52,16 @@ class TAPTraceHandler (TraceHandler):
         self.builder.set_plan(self.dtestmaster.nbSteps, None)
     
     def finalizeSequence(self):
-        self.output.write("## Test Sequence <"+self.dtestmaster.name+"> done.\n")
+        self.output.write("## Test Sequence <"+self.dtestmaster.name+">")
+        if (self.sequence_passed):
+            self.output.write(": PASSED.\n")
+        else:
+            self.output.write(": FAILED.\n")                    
     
     def traceStepResult(self,ok_nok,desc,skip=None,todo=None):
         self.builder.ok(ok_nok,desc=desc,skip=skip,todo=todo)
+        if (not ok_nok):
+            self.sequence_passed = False
     
     def traceStepComment(self,comment):
         self.output.write("##" + comment)

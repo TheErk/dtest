@@ -21,6 +21,8 @@
 ##-----------------------------------------------------------------------
 
 import logging
+import os
+import sys
 
 class TraceHandler (object):
     """Represents a DTest trace handler.
@@ -37,7 +39,8 @@ class TraceHandler (object):
         if (isinstance(out,file)):
             return out
         if (isinstance(out,type(""))):
-            if (ext):
+            (name,builtin_ext) = os.path.splitext(out)
+            if (builtin_ext=="" and ext):
                 return file(out+ext,"w+")
             else:
                 return file(out,"w+")

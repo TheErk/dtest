@@ -89,7 +89,7 @@ tester1.addRunStep("waitDuring",6)
 tester1.addRunStep("barrier","timedBarrier",10.6)
 tester2.addRunStep("barrier","timedBarrier",1.5)
 tester2.addRunStep("ok",True,desc="--END step--")
-
+                      
 myDTestMaster = dtest.DTestMaster("DTest-Autotest",description="DTest autotests sequence not using sesssion")
 myDTestMaster.register(tester1)
 myDTestMaster.register(tester2)

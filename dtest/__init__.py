@@ -37,6 +37,8 @@ from ssh_session_handler import SSHSessionHandler
 from local_session_handler import LocalSessionHandler
 from trace_manager import TraceManager
 from trace_handler import TraceHandler
+from TAP_trace_handler import TAPTraceHandler
+from MSC_trace_handler import MSCTraceHandler
 
 # fix module names for epydoc
 # borrowed from paramiko __init__.py
@@ -51,5 +53,7 @@ __all__ = [ 'DTester',
             'SSHSessionHandler',
             'LocalSessionHandler',
             'TraceManager',
-            'TraceHandler'            
+            'TraceHandler',
+            'TAPTraceHandler',
+            'MSCTraceHandler'
             ]    
