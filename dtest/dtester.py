@@ -199,7 +199,7 @@ class DTester (Thread):
         if (environ != None):
             self.session.updateEnviron(environ)
         if (command != None):
-            self.session.send(command+self.session.NEWLINE)    
+            return self.session.send(command+self.session.NEWLINE)    
            
     def abort(self):
         if self.stdin != None:

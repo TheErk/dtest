@@ -70,11 +70,13 @@ class SSHSessionHandler(dtest.SessionHandler):
 
     def send(self, string):
         super(SSHSessionHandler,self).send(string)        
-        return self.SSHShell.send(string)
+        self.SSHShell.send(string)
+        return True
 
     def sendall(self, string):
         super(SSHSessionHandler,self).sendall(string)
-        return self.SSHShell.sendall(string)
+        self.SSHShell.sendall(string)
+        return True
 
     def recv_ready(self):
         return self.SSHShell.recv_ready()
