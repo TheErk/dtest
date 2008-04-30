@@ -96,6 +96,7 @@ traceManager = dtest.TraceManager()
 traceManager.register(dtest.TAPTraceHandler())
 # MSC goes to file MSC-trace
 traceManager.register(dtest.MSCTraceHandler(output="MSC-trace"))
+traceManager.register(dtest.PromelaTraceHandler(output="PML-trace"))
 
 # To generate a message sequence chart trace of one possible execution but without executing the steps
 # set pseudoexec to 1
