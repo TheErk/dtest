@@ -26,23 +26,20 @@ from trace_handler import TraceHandler
 import TAP
 
 class PromelaTraceHandler (TraceHandler):
-    """Represents a DTest TAP trace handler.
-
-    A DTest Test Anything Protocol (TAP) trace handler 
+    """Represents a DTest Promela trace handler.
+    A DTest Promela trace handler 
     """
 
     logger = logging.getLogger("PromelaTraceHandler")
     
-    def __init__(self,outputFile=sys.__stdout__):
+    def __init__(self,output="TRACE"):
         super(PromelaTraceHandler,self).__init__("PromelaTraceHandler")
         self.output = TraceHandler.getFileOrOpenPath(output,ext=".pml")  
            
     def newSequence(self, dtestmaster):
         self.logger.info("Registering Test Sequence <" + dtestmaster.name + ">...")
         self.dtestmaster  = dtestmaster
-        #a queue for globally ordering execution steps from DTester threads
-        self.__global_execution_steps_queue = Queue(0)
-        #the list of steps building from global_execution_steps_queue
+        #the list of execution steps
         self.__execution_steps_list = []
 
     def initializeSequence(self):
@@ -50,23 +47,22 @@ class PromelaTraceHandler (TraceHandler):
         This gives a chance for the handler to build a header
         """
         self.logger.info("Current sequence has <%d> DTesters." % self.dtesters.__len__())
-        self.builder.set_plan(self.dtestmaster.nbSteps, None)
 
     def finalizeSequence(self):
-        while not self.global_execution_steps_queue.empty():
-            line=self.global_execution_steps_queue.get()
-            self.__execution_steps_list.append(line) 
+        #we generate promela code from execution steps
+        self.promelaGenerator()
         
     def traceStep(self,srcDTester,dstDTester,step):
-        self.global_execution_steps_queue.put((srcDTester,dstDTester,step))            
+        self.__execution_steps_list.append((srcDTester.name,dstDTester.name,step))            
     
     def traceStepResult(self,ok_nok,desc,skip,todo):
         pass
     
     def traceStepComment(self,comment):
-        pass
+        self.output.write("/*"+comment+"*/")
 
     def finalize(self):        
+        print "Promela code has been generated in "+self.output
         TraceHandler.closeIfNotStdout(self.output)
         
     def promelaGenerator(self):
@@ -78,9 +74,9 @@ class PromelaTraceHandler (TraceHandler):
         lines.append("mtype = {a};\n\n")      
         
         #finding testers name
-        for tester in self.joinedDTesters:
+        for tester in self.dtestmaster.joinedDTesters:
             testers_steps[tester.name]=[]
-        testers_steps[self.getName()]=[]
+        testers_steps[self.dtestmaster.name]=[]
         
         #we group execution steps by tester
         for line in self.__execution_steps_list:
@@ -111,8 +107,9 @@ class PromelaTraceHandler (TraceHandler):
                         barriername_list.append(barrierName)
                     if src!=dest:
                         #lines.append("\t"+methodName+"_"+barriername+"_"+src+"!a;\n\n")
+                        lines.append("\t"+methodName+"_"+str(__nbSteps)+":printf(\""+methodName+"_"+str(__nbSteps)+"\");\n\n")
                         lines.append("\t"+barrierName+" = "+barrierName+" + 1 ;\n\n")
-                        lines.append("\t("+barrierName+"=="+str(len(self.barriers[barrierKey]["init"]))+");\n\n")  
+                        lines.append("\t("+barrierName+"=="+str(len(self.dtestmaster.barriers[barrierKey]["init"]))+");\n\n")  
                     #self barrier step:                     
                     else:
                         lines.append("\t"+methodName+"_"+str(__nbSteps)+":printf(\""+methodName+"_"+str(__nbSteps)+"\");\n\n")
@@ -122,37 +119,19 @@ class PromelaTraceHandler (TraceHandler):
                 __nbSteps+=1
             lines.append("}\n\n")
         
-        promela_file=open("execution_trace.pml","w")
-        #adding channel declaration for barrier
-        #promela_file.write("/*chan declaration for barrier*/\n")
-        #for b in barriername_list:
-            #promela_file.write("chan barrier"+b+" = [1] of { byte } ;\n\n")
         #adding barrier counter declaration
-        promela_file.write("/*barrier counter declaration*/\n")
+        self.output.write("/*barrier counter declaration*/\n")
         for b in barriername_list:
-            promela_file.write("byte "+b+";\n\n")
+            self.output.write("byte "+b+";\n\n")
         for line in lines:
-           promela_file.write(line)
+           self.output.write(line)
         #initializing barriers
-        promela_file.write("init \n{\n")
+        self.output.write("init \n{\n")
         for b in barriername_list:
-            promela_file.write("\t"+b+" = 0;\n")
-        promela_file.write("atomic {\n")
+            self.output.write("\t"+b+" = 0;\n")
+        self.output.write("atomic {\n")
         #atomicly launching processes
         for key in testers_steps.keys():
-            promela_file.write("\trun "+key+"();\n")
-        promela_file.write("\t}\n")
-        promela_file.write("}\n")
-        promela_file.close()
-        print "Promela execution generated in execution_trace.pml"     
-
-        #declaration du type de message - ok
-        #declaration compteur de barrieres - ok
-        #declaration canaux barriere - ok
-        #gestion des barrieres - ok
-        #declaration des canaux - ok
-        #creation des proctypes - ok
-        #grouper les pas d'execution par proctype - ok
-        #transformation de chaque pas self en etiquette numerotee - ok
-        #initialisation des compteurs - ok
-        #lancement de chaque processus - ok
+            self.output.write("\trun "+key+"();\n")
+        self.output.write("\t}\n")
+        self.output.write("}\n")

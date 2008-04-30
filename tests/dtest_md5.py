@@ -27,6 +27,7 @@ import logging
 import os
 import filecmp
 import getopt,sys
+from dtest.Promela_trace_handler import PromelaTraceHandler
 
 def getDir(s):
     spl=s .split('/')
@@ -140,14 +141,24 @@ tester2.addRunStep("waitCommandTermination")
 def compareFiles(dtester):
     dtester.ok(filecmp.cmp("res1","res2"),"Compare res1 with res2")
 tester2.addRunStep(compareFiles)
-tester2.nb_steps += 1
+#tester2.nb_steps += 1
 
 # Here begins the test
 dtest.DTestMaster.logger.setLevel(level=logging.WARNING)
 dtest.DTester.logger.setLevel(level=logging.WARNING)
 dtest.SSHSessionHandler.logger.setLevel(level=logging.WARNING)
 
+# Add some trace Handlers
+traceManager = dtest.TraceManager()
+# TAP goes to stdout
+traceManager.register(dtest.TAPTraceHandler())
+# MSC goes to file MSC-trace
+traceManager.register(dtest.MSCTraceHandler(output="MSC-trace"))
+# Promela goes to PROMELA_trace
+traceManager.register(PromelaTraceHandler())
+
 myDTestMaster = dtest.DTestMaster()
+myDTestMaster.registerTraceManager(traceManager)
 myDTestMaster.trace=1
 #register dtesters in DTestMaster
 myDTestMaster.register(tester1)
