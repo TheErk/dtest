@@ -39,6 +39,7 @@ from trace_manager import TraceManager
 from trace_handler import TraceHandler
 from TAP_trace_handler import TAPTraceHandler
 from MSC_trace_handler import MSCTraceHandler
+from Promela_trace_handler import PromelaTraceHandler
 
 # fix module names for epydoc
 # borrowed from paramiko __init__.py
@@ -55,5 +56,6 @@ __all__ = [ 'DTester',
             'TraceManager',
             'TraceHandler',
             'TAPTraceHandler',
-            'MSCTraceHandler'
+            'MSCTraceHandler',
+            'PromelaTraceHandler'
             ]    

@@ -23,7 +23,6 @@
 import logging
 import sys
 from trace_handler import TraceHandler
-import TAP
 
 class PromelaTraceHandler (TraceHandler):
     """Represents a DTest Promela trace handler.
@@ -62,7 +61,7 @@ class PromelaTraceHandler (TraceHandler):
         self.output.write("/*"+comment+"*/")
 
     def finalize(self):        
-        print "Promela code has been generated in "+self.output
+        print "Promela code has been generated in "+self.output.name
         TraceHandler.closeIfNotStdout(self.output)
         
     def promelaGenerator(self):
