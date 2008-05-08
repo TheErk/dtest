@@ -191,7 +191,7 @@ class DTestMaster(object):
     def ok(self, dtester, *args, **kwargs):
         """ok TAP-like method"""
         self.traceManager.traceStepResult(*args,**kwargs)
-        return 0
+        return args[0]
 
     def globalTimeOutTriggered(self):
         self.logger.fatal("Global Time out triggered, exiting")
@@ -213,12 +213,13 @@ class DTestMaster(object):
             self.barriers[barrierId]['reached'].remove(dtester)
         except KeyError:
             self.logger.warning("DTester <"+ dtester.getName()+ " does not belong to barrier.")
-            return
+            return False
         
         self.logger.info("DTester < "+ dtester.getName()+ "> entered barrier <" + barrierId + ">.")
         if len(self.barriers[barrierId]['reached']) == 0:
             self.traceManager.traceStepResult(True,desc="Barrier <%s> crossed by all <%d> registered DTester(s)" % (barrierId, len(self.barriers[barrierId]['init']))) 
             self.barriers[barrierId]['barrier'].set()
+            return True
         else:
             self.barriers[barrierId]['barrier'].wait(timeout)
             if (not self.barriers[barrierId]['barrier'].isSet()):
@@ -231,7 +232,10 @@ class DTestMaster(object):
                 # NOT a real issue since barrier are one-shot
                 # and a barrier failed if only 1 stakeholder missed it
                 self.barriers[barrierId]['barrier'].set()
+                dtester.hasTimedOut = True
+                return False
             else:
+                return True
                 self.logger.info("DTester < "+ dtester.getName()+ "> crossed barrier <" + barrierId + ">.")     
         
 

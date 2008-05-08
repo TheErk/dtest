@@ -123,8 +123,11 @@ class DTester (Thread):
 
     def __getHasTimedOut(self):
         return self.__expectDidTimeOut
+
+    def __setHasTimedOut(self,value):
+        self.__expectDidTimeOut = True
         
-    hasTimedOut = property(fget=__getHasTimedOut)
+    hasTimedOut = property(fget=__getHasTimedOut,fset=__setHasTimedOut)
         
     def __getName(self):
         return self.getName()
@@ -183,11 +186,11 @@ class DTester (Thread):
         """
         if (timeout==None):
             timeout = self.timeout
-        self.dtestmaster.barrier(self,barrierId,timeout)
+        return self.dtestmaster.barrier(self,barrierId,timeout)
 
     def ok(self, *args, **kwargs):
         """Ok TAP (Test Anything Protocol) method"""
-        self.dtestmaster.ok(self, *args, **kwargs)
+        return self.dtestmaster.ok(self, *args, **kwargs)
 
     ## The following are command related API
     ## which are implemented using lower-level
