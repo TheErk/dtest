@@ -106,7 +106,8 @@ class DTester (Thread):
         self.timeout            = timeout
         self.environ            = None
         self.dtestmaster        = None
-        self.__nbSteps           = 0
+        self.__nbSteps          = 0
+        self.__ifThenElse_scope = False
         
         self.__expectDidTimeOut   = False
         self.__runSteps           = []
@@ -201,10 +202,10 @@ class DTester (Thread):
         else:
             return self.dtestmaster.ok(self, ok_nok, desc, **kwargs)
         
-    def conditionnalSkip(self,condition):
+    def ifThenElse(self,condition):
         if (callable(condition)):
             callme = condition()
-            return callme
+            return callme()
         else:
             return condition
 
@@ -266,6 +267,8 @@ class DTester (Thread):
         # the session handler the test has timedout
         if self.__expectDidTimeOut:
             #self.logger.warn("Monitored = %s" % monitored.getvalue())
+            # reset timeout state for the session
+            self.session.hasTimedOut = False
             return False
         else:
             if timeout != None:
@@ -335,20 +338,32 @@ class DTester (Thread):
                 stepmethod = getattr(self.__class__,stepmethod)
                 self.logger.debug("stepmethod string <%s> resolved to %r" % (stepmethod_str,stepmethod))
             else:
-                raise DTester.InvalidStepFunctionException, "Stepmethod is a unknown attribute string <%s> of class <%s>" % stepmethod, self.__class__.__name__
+                raise DTester.InvalidStepFunctionException, "Stepmethod is a unknown attribute string <%s> of class <%s>" % (stepmethod, self.__class__.__name__)
 
         # stepmethod should be callable, at least ...
         if not callable(stepmethod):
             raise DTester.StepNotCallableException, "Invalid run step:"+str(stepmethod)+"is not a callable object"
 
         if (inspect.ismethod(stepmethod)):
-            # barrier and ok method triggers special handling
+            # barrier, ok and ifThenElse
+            # method triggers special handling
             # we check for .im_func in order to capture both bounded
             # and unbounded method
             if stepmethod.im_func == DTester.barrier.im_func:
                 self.addInitializeStep(DTester.registerForBarrier,args[0])
             elif stepmethod.im_func == DTester.ok.im_func:
-                self.__nbSteps += 1
+                # if an ok step is in the scope
+                # of ifThenElse then there _MUST_
+                # an ok step in each branch
+                # thus we do not count first ok step
+                if self.__ifThenElse_scope:
+                    self.__ifThenElse_scope = False
+                else:
+                    self.__nbSteps += 1
+            elif stepmethod.im_func == DTester.ifThenElse.im_func:
+                self.__ifThenElse_scope = True
+            else:
+                self.__ifThenElse_scope = False
 
         if DTester.__isfunction_or_unboundmethod(stepmethod):
             # We check first arg to be self or dtester 
@@ -385,12 +400,17 @@ class DTester (Thread):
         """
         
         self.logger.info("DTester <%s> begin run..." % self.getName())
-        skipNextStep = False
+        skipNextStep   = False
+        skipSecondStep = False
         for step in self.__runSteps:
             
             if skipNextStep:
                 skipNextStep = False
                 continue
+            if skipSecondStep:
+                skipSecondStep = False
+                skipNextStep   = True
+                
             # step[0] is the callable step function
             # step[1] is 'args' positionnal arguments
             # step[2] is 'kwargs' keywords arguments
@@ -430,12 +450,12 @@ class DTester (Thread):
                     self.logger.error("Step <%r> failed <%r>" % (step[0],err))
                     self.__lastStepStatus = False
                     self.dtestmaster.traceManager.traceStepResult(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
-            # skip next step if a conditionnalSkip was just executed
-            if (step[0].__name__ == self.conditionnalSkip.__name__):                
+            # skip next step if a ifThenElse was just executed
+            if (step[0].__name__ == self.ifThenElse.__name__):            
                 if not self.__lastStepStatus:
                     self.logger.debug("skipping next step");
-                    skipNextStep = True
+                    skipNextStep = True                    
                 else:
-                    pass         
+                    skipSecondStep = True
             self.logger.debug("lastStepStatus = %r" % self.__lastStepStatus)
         self.logger.info("DTester <%s> has terminated." % self.getName())

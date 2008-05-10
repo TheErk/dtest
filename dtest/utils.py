@@ -52,4 +52,3 @@ class Utils (object):
         return retval
 
     getUserHostPath = classmethod(getUserHostPath)
-
