@@ -29,7 +29,7 @@ import logging
 
 # Here begins the test
 dtest.DTestMaster.logger.setLevel(level=logging.ERROR)
-dtest.DTester.logger.setLevel(level=logging.ERROR)
+dtest.DTester.logger.setLevel(level=logging.WARN)
 
 def myCustomStep(dtester, *args, **kwargs):
    return True
@@ -88,6 +88,9 @@ tester2.addRunStep("barrier","wait4me4ever")
 tester1.addRunStep("waitDuring",6)
 tester1.addRunStep("barrier","timedBarrier",10.6)
 tester2.addRunStep("barrier","timedBarrier",1.5)
+tester2.addRunStep("ok",False,"Will make next step to be skipped")
+tester2.addRunStep("conditionnalSkip",False)
+tester2.addRunStep("ok",True,"Won't be shown")
 tester2.addRunStep("ok",True,"--END step--")
                       
 myDTestMaster = dtest.DTestMaster("DTest-Autotest",description="DTest autotests sequence not using sesssion")

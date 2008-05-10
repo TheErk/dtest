@@ -200,11 +200,17 @@ class DTester (Thread):
             return self.dtestmaster.ok(self, callme(), desc, **kwargs)
         else:
             return self.dtestmaster.ok(self, ok_nok, desc, **kwargs)
+        
+    def conditionnalSkip(self,condition):
+        if (callable(condition)):
+            callme = condition()
+            return callme
+        else:
+            return condition
 
     ## The following are command related API
     ## which are implemented using lower-level
-    ## session handler API
-    
+    ## session handler API    
     def runCommand(self, command=None, environ=None):
         """Run a command on the session handler DTest.session"""
         self.session.openIfNotOpened()
@@ -379,7 +385,12 @@ class DTester (Thread):
         """
         
         self.logger.info("DTester <%s> begin run..." % self.getName())
+        skipNextStep = False
         for step in self.__runSteps:
+            
+            if skipNextStep:
+                skipNextStep = False
+                continue
             # step[0] is the callable step function
             # step[1] is 'args' positionnal arguments
             # step[2] is 'kwargs' keywords arguments
@@ -419,6 +430,12 @@ class DTester (Thread):
                     self.logger.error("Step <%r> failed <%r>" % (step[0],err))
                     self.__lastStepStatus = False
                     self.dtestmaster.traceManager.traceStepResult(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
-                    
+            # skip next step if a conditionnalSkip was just executed
+            if (step[0].__name__ == self.conditionnalSkip.__name__):                
+                if not self.__lastStepStatus:
+                    self.logger.debug("skipping next step");
+                    skipNextStep = True
+                else:
+                    pass         
             self.logger.debug("lastStepStatus = %r" % self.__lastStepStatus)
         self.logger.info("DTester <%s> has terminated." % self.getName())
