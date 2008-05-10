@@ -8,24 +8,8 @@ import threading
 import getopt, sys
 
 def usage():
-    print "Usage:\n %s [-h|--help] [-s|--ssh_cmd=<user>@[<host>]:<cmd>]" % sys.argv[0]
+    print "Usage:\n %s [-h|--help] [-s|--ssh_cmd=<user>@[<host>]:<path>]" % sys.argv[0]
     
-def getUserHostPath(argument):
-    if argument.find("@") != -1:
-        (user,argument) = argument.split("@",1)
-    else:
-        user = os.environ["USER"]
-    if argument.find(":") != -1:
-        (host,cmd) = argument.split(":",1)
-    else:
-        host = "localhost"
-        cmd = argument
-    retval = dict()
-    retval['user'] = user
-    retval['host'] = host
-    retval['cmd'] = cmd
-    return retval
-
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hs:", ["help","ssh_cmd="])
 except getopt.GetoptError, err:
@@ -35,11 +19,11 @@ except getopt.GetoptError, err:
 
 if len(opts) < 1:
     # default command is 'ls'
-    param=getUserHostPath("ls")
+    param=dtest.Utils.getUserHostPath("ls")
 
 for o, a in opts:
     if o in ("-s", "--ssh_cmd"):
-        param   = getUserHostPath(a)
+        param   = dtest.Utils.getUserHostPath(a)
     if o in ("-h", "--help"):
         usage()
 
@@ -77,8 +61,10 @@ def compareFiles(dtester, file1, file2):
 dtest.DTester.logger.setLevel(level=logging.WARNING)
 
 dtester_ssh.addRunStep("ok",True,"dtester ssh starts")
-dtester_ssh.addRunStep("runCommand",command=param['cmd']+"\n")
-dtester_ssh.addRunStep("expectFromCommand",param['cmd'])
+dtester_ssh.addRunStep("runCommand",command=param['path']+"\n")
+dtester_ssh.addRunStep("expectFromCommand",param['path'])
+#dtester_ssh.addRunStep("expectFromCommand","ghatheau",timeout=2)
+#dtester_ssh.addRunStep("ok",dtester_ssh.getFutureLastStepStatus,"Should not be OK")
 dtester_ssh.addRunStep("terminateCommand")
 dtester_ssh.addRunStep("waitCommandTermination")
 dtester_ssh.addRunStep("ok",True,"dtester ssh ends")

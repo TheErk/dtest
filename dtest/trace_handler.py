@@ -90,7 +90,7 @@ class TraceHandler (object):
     def traceStep(self,srcDTester,dstDTester,step):
         pass
     
-    def traceStepResult(self,ok_nok,desc,skip=None,todo=None):
+    def traceStepResult(self,ok_nok,desc=None,skip=None,todo=None):
         raise TraceHandlerAbstractMethod
     
     def traceStepComment(self,comment):

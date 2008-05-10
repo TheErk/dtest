@@ -47,8 +47,8 @@ tester2     = dtest.DTester("DTester2")
 # Describe the run step(s)
 tester1.addRunStep("barrier","aBarrier")
 tester2.addRunStep("barrier","aBarrier")
-tester2.addRunStep("ok",True,skip="--SKIPPED step--")
-tester2.addRunStep("ok",False,desc="here is a failure")
+tester2.addRunStep("ok",True,"SKIPPED test", skip="--because that's life--")
+tester2.addRunStep("ok",False,"here is a failure")
 # You may add a run step using different syntax
 # 1- use a string as method name
 # 2- use an unbound method from a class
@@ -58,16 +58,16 @@ tester2.addRunStep("ok",False,desc="here is a failure")
 #    then DTest will lookup a method "ok" in class
 #    corresponding to object instance
 #    calling addRunStep (i.e. tester2.__class__ in this case)
-tester2.addRunStep("ok",True,desc="ok step using 'string' ok name")
+tester2.addRunStep("ok",True,"ok step using 'string' ok name")
 # 2- use an unbound method from a class
 #    then DTest will use the method and provides "self" as first arg
-tester2.addRunStep(dtest.DTester.ok,True,desc="ok step using 'DTester.ok' unbound method")
+tester2.addRunStep(dtest.DTester.ok,True,"ok step using 'DTester.ok' unbound method")
 # 2bis- use an unbound method taken from the class
 #       using the __class__ attribute of the object
-tester2.addRunStep(tester2.__class__.ok,True,desc="ok step using 'tester2.__class__.ok' unbound method")
+tester2.addRunStep(tester2.__class__.ok,True,"ok step using 'tester2.__class__.ok' unbound method")
 # 3- use a bound method
 #
-tester2.addRunStep(tester2.ok,True,desc="ok step using 'tester2.ok' bound method")
+tester2.addRunStep(tester2.ok,True,"ok step using 'tester2.ok' bound method")
 # 5- use a custom step
 #    then DTest will check that first arg is either self or dtester
 #    and will provider the "self" caller as first arg
@@ -80,7 +80,7 @@ except dtest.DTester.InvalidStepFunctionException, e:
    print "## Since it raises : ", repr(e)   
 
 tester2.addRunStep("barrier","anotherBarrier")
-tester2.addRunStep("ok",True,todo="--TODO step--")
+tester2.addRunStep("ok",True,"TODO step", todo="--TODO step--")
 
 # Thoses step will make tester2 timeout for sure
 tester1.addRunStep("barrier","wait4me4ever")
@@ -88,7 +88,7 @@ tester2.addRunStep("barrier","wait4me4ever")
 tester1.addRunStep("waitDuring",6)
 tester1.addRunStep("barrier","timedBarrier",10.6)
 tester2.addRunStep("barrier","timedBarrier",1.5)
-tester2.addRunStep("ok",True,desc="--END step--")
+tester2.addRunStep("ok",True,"--END step--")
                       
 myDTestMaster = dtest.DTestMaster("DTest-Autotest",description="DTest autotests sequence not using sesssion")
 myDTestMaster.register(tester1)

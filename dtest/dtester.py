@@ -66,6 +66,9 @@ class DTester (Thread):
     class SessionUnableToRunCommandException(Exception):
         """The DTest Session Handler cannot run command"""
 
+    class StepTimeOut(Exception):
+        """A step has timed out"""
+
 
     def __isbound(cls,function):
         return inspect.ismethod(function) and function.im_self != None
@@ -188,9 +191,15 @@ class DTester (Thread):
             timeout = self.timeout
         return self.dtestmaster.barrier(self,barrierId,timeout)
 
-    def ok(self, *args, **kwargs):
+    def ok(self, ok_nok, desc, **kwargs):
         """Ok TAP (Test Anything Protocol) method"""
-        return self.dtestmaster.ok(self, *args, **kwargs)
+        # If we have been given a callable object for 'ok_nok'
+        # this mean it should be called when OK is called
+        if (callable(ok_nok)):
+            callme = ok_nok()
+            return self.dtestmaster.ok(self, callme(), desc, **kwargs)
+        else:
+            return self.dtestmaster.ok(self, ok_nok, desc, **kwargs)
 
     ## The following are command related API
     ## which are implemented using lower-level
@@ -327,8 +336,7 @@ class DTester (Thread):
             raise DTester.StepNotCallableException, "Invalid run step:"+str(stepmethod)+"is not a callable object"
 
         if (inspect.ismethod(stepmethod)):
-            # barrier and ok method
-            # triggers special handling
+            # barrier and ok method triggers special handling
             # we check for .im_func in order to capture both bounded
             # and unbounded method
             if stepmethod.im_func == DTester.barrier.im_func:
@@ -372,13 +380,17 @@ class DTester (Thread):
         
         self.logger.info("DTester <%s> begin run..." % self.getName())
         for step in self.__runSteps:
+            # step[0] is the callable step function
+            # step[1] is 'args' positionnal arguments
+            # step[2] is 'kwargs' keywords arguments
             self.logger.debug("run :: step[0]: %s", str(step[0]))
             self.logger.debug("run :: step[1:] %s", str(step[1:]))
             isBarrierStep=(step[0].__name__==self.barrier.__name__)
             # Trace the step (not in the barrier step
             # it will be traced when called ? FIXME is it a good way to do that ?
             if (not isBarrierStep):
-                self.dtestmaster.traceManager.traceStep(self,self,step)    
+                self.dtestmaster.traceManager.traceStep(self,self,step)
+            # Step has argument positionnal 'args' and/or keyword 'kwargs' 
             if (len(step[1]) > 0) or (len(step[2]) > 0):
                 try:
                     if (DTester.__isbound(step[0])):                        
@@ -408,4 +420,5 @@ class DTester (Thread):
                     self.__lastStepStatus = False
                     self.dtestmaster.traceManager.traceStepResult(False,desc="RunStep <%r> failed <%r>" % (step[0],err))
                     
+            self.logger.debug("lastStepStatus = %r" % self.__lastStepStatus)
         self.logger.info("DTester <%s> has terminated." % self.getName())

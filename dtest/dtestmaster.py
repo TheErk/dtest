@@ -188,10 +188,10 @@ class DTestMaster(object):
             self.barriers[barrierId]['init'].add(dtester)
             self.barriers[barrierId]['reached'].add(dtester)
                
-    def ok(self, dtester, *args, **kwargs):
+    def ok(self, dtester, ok_nok, desc, **kwargs):
         """ok TAP-like method"""
-        self.traceManager.traceStepResult(*args,**kwargs)
-        return args[0]
+        self.traceManager.traceStepResult(ok_nok, desc, **kwargs)
+        return ok_nok
 
     def globalTimeOutTriggered(self):
         self.logger.fatal("Global Time out triggered, exiting")
