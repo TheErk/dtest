@@ -52,3 +52,14 @@ class Utils (object):
         return retval
 
     getUserHostPath = classmethod(getUserHostPath)
+
+class ReusableSequences (object):
+
+    def addConditionalRunShellScript(cls,dtester,c_shell_cmd,bourne_shell_cmd):
+        dtester.addRunStep("runCommand",command="echo $SHELL")        
+        dtester.addRunStep("expectFromCommand",pattern=".*csh",timeout=3)
+        dtester.addRunStep("ifThenElse",dtester.getFutureLastStepStatus)
+        dtester.addRunStep("runCommand",c_shell_cmd)
+        dtester.addRunStep("runCommand",bourne_shell_cmd)
+        
+    addConditionalRunShellScript = classmethod(addConditionalRunShellScript)
