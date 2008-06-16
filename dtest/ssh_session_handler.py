@@ -36,7 +36,7 @@ class SSHSessionHandler(dtest.SessionHandler):
     """
     An SSH DTest session handler which may run command through an SSH connection
     """
-    logging.getLogger("paramiko.transport").addHandler(dtest.DTester.sh)
+    logging.getLogger("paramiko.transport").addHandler(dtest.SessionHandler.sh)
     def __init__(self,user,host='localhost',ForwardX11=False):
         super(SSHSessionHandler,self).__init__(runCommandCapable=True, fileTransferCapable=False)
         self.host        = host

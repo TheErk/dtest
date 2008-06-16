@@ -58,7 +58,7 @@ class SessionHandler (object):
         """The DTest Session Handler encounter a failure"""
         pass
 
-    logger = logging.getLogger("DTesterSessionHandler")
+    logger = logging.getLogger("SessionHandler")
     sh  = logging.StreamHandler()
     fmt = logging.Formatter(fmt="## [%(threadName)s]|%(name)s::%(levelname)s:: %(message)s")
     sh.setFormatter(fmt)

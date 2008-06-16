@@ -183,7 +183,7 @@ class DTestMaster(object):
             self.barriers[barrierId]['barrier'] = threading.Event()
         # verify the same DTester does not try to "re-use" the same barrier twice
         if dtester in self.barriers[barrierId]['init']:
-            raise InvalidBarrierUsageException("Trying to reuse barrier <%s> for dtester <%s> twice (at least)" % (barrierId,dtester.getName()))
+            raise self.InvalidBarrierUsageException("Trying to reuse barrier <%s> for dtester <%s> twice (at least)" % (barrierId,dtester.getName()))
         else:
             self.barriers[barrierId]['init'].add(dtester)
             self.barriers[barrierId]['reached'].add(dtester)
@@ -208,7 +208,7 @@ class DTestMaster(object):
         # for execution trace
         self.traceManager.traceStep(dtester,self,(self.barrier,"('"+barrierId+"')",""))             
         if not self.barriers.has_key(barrierId):
-            raise UnknownBarrierException, "barrier ID ="+barrierId
+            raise self.UnknownBarrierException, "barrier ID ="+barrierId
         try:
             self.barriers[barrierId]['reached'].remove(dtester)
         except KeyError:
@@ -246,7 +246,7 @@ class DTestMaster(object):
             self.logger.info("Initializing <"+ dtester.getName()+ ">...")
             try:
                 dtester.initialize()
-            except (UnknownBarrier,InvalidBarrierUsage), err:
+            except (self.UnknownBarrierException,self.InvalidBarrierUsageException), err:
                 self.logger.error("%s : %s" % (err.__class__,err))                
                 return
             self.nbSteps += dtester.nbSteps

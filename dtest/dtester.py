@@ -229,7 +229,8 @@ class DTester (Thread):
             self.stderr.flush()
 
     def __expectTimedOut(self,msg=None):
-        self.logger.warning("Expect timeout: %s" % msg)
+        if (not self.silentExpect==True):
+            self.logger.warning("Expect timeout: %s" % msg)
         self.abort()
         self.__expectDidTimeOut = True        
         # notify session 
@@ -241,10 +242,16 @@ class DTester (Thread):
         t.setName("Timer-"+self.getName())
         return t
     
-    def expectFromCommand(self, pattern, timeout=None):    
+    def expectFromCommand(self, pattern, timeout=None, silent=None):    
         """Wait until the expected pattern is received on the session handler DTester.session"""
-        pat       = re.compile(pattern)
+        if (type(pattern)==type(re.compile(""))):
+            pat = pattern
+        else:
+            pat = re.compile(pattern)
+            
         monitored = StringIO("")
+
+        self.silentExpect = silent
 
         # if no timeout is specified then use
         # the one of the DTester instance
@@ -266,7 +273,7 @@ class DTester (Thread):
         # We will get there because time out handler did tell
         # the session handler the test has timedout
         if self.__expectDidTimeOut:
-            #self.logger.warn("Monitored = %s" % monitored.getvalue())
+            self.logger.debug("Monitored = %s" % monitored.getvalue())
             # reset timeout state for the session
             self.session.hasTimedOut = False
             return False
