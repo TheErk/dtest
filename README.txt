@@ -20,7 +20,6 @@ This the DTest source release
         pytap    [required]
         paramiko [required]
 	pycrypto [required by paramiko]
-	pexpect  [optional]
  
    see dtest/external/where_dtest_external.txt
    for having the URLs of the previous packages
@@ -34,7 +33,7 @@ This the DTest source release
 
 2) If you want to install dtest
 
-   python setup.py
+   python setup.py install
 
 3) If you want to generate the documentation using epydoc
 

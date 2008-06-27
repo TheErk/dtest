@@ -6,5 +6,7 @@ Some external packages are necessary for dtest usage:
 	- PyTAP which a Python Module which implements Test Anything Protocol
 		http://svn.codesimply.com/projects/pytap
   		http://en.wikipedia.org/wiki/Test_Anything_Protocol
+                Note that DTest currently use a modified version of PyTAP
+                such that you need to install the DTest specific version
 	- Pexpect (not used yet)
 		http://pexpect.sourceforge.net
