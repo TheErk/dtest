@@ -26,7 +26,7 @@
 longdesc = '''
 This is a library implementing a distributed test framework.
 DTest may be used to realize distributed test scenario
-including but not limiting to client/serveur application
+including but not limiting to client/server application
 testing.
 
 Required packages:
@@ -46,7 +46,7 @@ kw = {}
 
 from distutils.core import setup
 
-version_string='0.5'
+version_string='0.5.1'
 #version_string=version_string+"-"+time.strftime("%d%h%Y-%Hh%M")
 
 setup(name='dtest',
@@ -54,14 +54,16 @@ setup(name='dtest',
       description='A Distributed Test Framework',
       author='Eric Noulard',
       author_email='eric.noulard@gmail.com',
-      packages=['dtest'],
-      scripts=['tests/dtest-autotest','tests/dtest-sshtest'],
+      packages=['dtest', 'TAP'],
+      scripts=['tests/dtest-autotest','tests/dtest-sshtest', 'tests/dtest-tracetest'],
       license = 'LGPL',
-      url     = 'no URL yet :))',
+      url     = 'https://savannah.nongnu.org/projects/tsp',
       classifiers = [ 'Development Status :: 1 - Alpha',
                       'Intended Audience :: Developers',
                       'License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)',
-                      'Operating System :: OS Independent'],
+                      'Operating System :: OS Independent',
+                      'Programming Language :: Python',
+                      ],
       long_description = longdesc,
       **kw
       )
