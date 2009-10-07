@@ -133,10 +133,11 @@ class DTester (Thread):
         
     hasTimedOut = property(fget=__getHasTimedOut,fset=__setHasTimedOut)
         
-    def __getName(self):
-        return self.getName()
+    if not "name" in dir(threading.Thread):
+        def __getName(self):
+            return self.getName()
 
-    name = property(fget=__getName)
+        name = property(fget=__getName)
 
     def __getStderr(self):
         return self.session.stderr
