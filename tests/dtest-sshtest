@@ -57,7 +57,7 @@ def createLocalFile(dtester, filename, content):
 def compareFiles(dtester, file1, file2):
     import filecmp
     return filecmp.cmp(file1,file2)
-    
+
 dtest.DTester.logger.setLevel(level=logging.WARNING)
 
 dtester_ssh.addRunStep("ok",True,"dtester ssh starts")
@@ -99,6 +99,6 @@ def goTest():
     myDTestMaster.register(dtester_ssh2)
     myDTestMaster.startTestSequence()
     myDTestMaster.waitTestSequenceEnd()
-    
+
 goTest()
 

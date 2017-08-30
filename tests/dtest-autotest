@@ -76,8 +76,8 @@ tester1.addRunStep("ok",tester1.getFutureLastStepStatus,"myCustomStep")
 try:
    tester1.addRunStep(myInvalidCustomStep)
 except dtest.DTester.InvalidStepFunctionException, e:
-   print "## OK not adding the run step:", repr(myInvalidCustomStep)
-   print "## Since it raises : ", repr(e)   
+   print "#ERR# OK not adding the run step:", repr(myInvalidCustomStep)
+   print "#ERR# Since it raises : ", repr(e)
 
 tester2.addRunStep("barrier","anotherBarrier")
 tester2.addRunStep("ok",True,"TODO step", todo="--TODO step--")
@@ -96,7 +96,7 @@ tester2.addRunStep("ifThenElse",tester2.getFutureLastStepStatus)
 tester2.addRunStep("ok",True,"This second one should be done")
 tester2.addRunStep("ok",True,"This second one should be skipped")
 tester2.addRunStep("ok",True,"--END step--")
-                      
+
 myDTestMaster = dtest.DTestMaster("DTest-Autotest",description="DTest autotests sequence not using sesssion")
 myDTestMaster.register(tester1)
 myDTestMaster.register(tester2)
