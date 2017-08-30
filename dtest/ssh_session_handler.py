@@ -46,9 +46,10 @@ class SSHSessionHandler(dtest.SessionHandler):
         self.SSHShell    = None
         self.SFTPClient  = None
         self.X11cookie   = None
-        
+
     def open(self,*args,**kwargs):
         self.SSHClient   = paramiko.SSHClient()
+        self.SSHClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.SSHClient.load_system_host_keys()
         try:
             self.SSHClient.connect(self.host,username=self.user)
